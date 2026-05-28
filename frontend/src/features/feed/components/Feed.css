@@ -1,0 +1,93 @@
+/* 中央内容流 */
+.feed {
+  min-width: 0;
+  overflow: visible;
+  padding-right: 0;
+}
+
+/* 主帖列表采用单列信息流 */
+.feed-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 24px;
+}
+
+.post-list-flow {
+  display: contents;
+}
+
+.post-list-flow.is-refreshing .post-card {
+  opacity: 0.72;
+  transition: opacity 0.16s ease;
+}
+
+.feed-search-bar {
+  margin-bottom: 14px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  position: static;
+  background: transparent;
+}
+
+.feed-search-main {
+  display: block;
+}
+
+.feed-search-main-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feed-search-input-shell {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-search-input {
+  width: 100%;
+  min-width: 0;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 10px 64px 10px 12px;
+}
+
+.feed-search-inline-actions {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feed-search-btn {
+  border: 0;
+  background: transparent;
+  color: #333;
+  font-weight: 800;
+  padding: 6px 2px;
+  cursor: pointer;
+}
+
+.feed-search-btn:hover {
+  color: #111;
+  text-decoration: underline;
+}
+
+.feed-load-more {
+  min-height: 44px;
+  margin: 2px auto 0;
+  padding: 8px 16px 20px;
+  text-align: center;
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #666;
+}

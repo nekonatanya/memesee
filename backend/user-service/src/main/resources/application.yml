@@ -1,0 +1,44 @@
+debug: false
+
+server:
+  port: 8081
+
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${USER_DB_URL:jdbc:mysql://127.0.0.1:3307/memesee_user?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${USER_DB_USERNAME:memesee_app}
+    password: ${USER_DB_PASSWORD:memesee_app_password}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+  jackson:
+    time-zone: UTC
+
+app:
+  security:
+    jwt:
+      secret: ${APP_SECURITY_JWT_SECRET:${JWT_SECRET:change_me_to_a_long_secret_at_least_32_chars}}
+      expiration-seconds: ${APP_SECURITY_JWT_EXPIRATION_SECONDS:${JWT_EXPIRATION_SECONDS:86400}}
+    internal:
+      service-token: ${APP_SECURITY_INTERNAL_SERVICE_TOKEN:${USER_INTERNAL_SERVICE_TOKEN:change_me_internal_service_token}}
+  internal:
+    service-token: ${APP_SECURITY_INTERNAL_SERVICE_TOKEN:${USER_INTERNAL_SERVICE_TOKEN:change_me_internal_service_token}}
+  progress:
+    recent-created-posts: ${APP_PROGRESS_RECENT_CREATED_POSTS:0}
+    recent-created-posts-window-days: ${APP_PROGRESS_RECENT_CREATED_POSTS_WINDOW_DAYS:100}
+
+logging:
+  level:
+    org.hibernate.SQL: WARN
+    org.hibernate.orm.jdbc.bind: WARN
+    org.hibernate.orm.results: WARN

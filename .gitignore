@@ -1,0 +1,17 @@
+node_modules/
+dist/
+target/
+run-logs/
+.ci-logs/
+coverage/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
+*.iml
+*.tmp
+.env
+.env.local
+frontend/.env.local
+backend/*/run-logs/
