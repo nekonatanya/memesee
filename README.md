@@ -237,6 +237,76 @@ location /media/ {
 
 此时可设置 `CONTENT_MEDIA_PUBLIC_BASE_URL=https://example.com/media`。MinIO 控制台端口、RabbitMQ 管理端口、数据库端口不要暴露到公网；只开放前端、网关和经过反代的媒体读取路径。若 bucket 设置为公开读取，建议仅放置帖子图片这类允许公开访问的对象。
 
+## 服务器部署与更新
+
+生产部署推荐使用 `docker-compose.prod.yml`。服务器只需要保留 `.env`、Docker 数据卷和 Nginx 配置；本地写完新版本后提交到 Git，服务器执行部署脚本即可更新。
+
+首次部署到 `memesee.world`：
+
+```bash
+sudo mkdir -p /opt
+cd /opt
+git clone <你的仓库地址> memesee
+cd /opt/memesee
+cp deploy/.env.production.example .env
+```
+
+编辑 `.env`，替换所有 `replace-with-...`，并确认：
+
+```env
+FRONTEND_ORIGIN=https://memesee.world
+CONTENT_MEDIA_DIRECT_DELIVERY_ENABLED=true
+CONTENT_MEDIA_PUBLIC_BASE_URL=https://memesee.world/media
+```
+
+启动或更新：
+
+```bash
+cd /opt/memesee
+bash deploy/deploy.sh
+```
+
+`deploy/deploy.sh` 会执行：
+
+- `git pull --ff-only`
+- `docker compose -f docker-compose.prod.yml up -d --build`
+- 自动安装 Nginx 站点配置
+- 若存在 `/etc/letsencrypt/live/memesee.world/fullchain.pem`，自动使用 HTTPS 配置；否则先使用 HTTP 配置
+- 检查网关和前端本地端口是否可用
+
+申请 HTTPS 证书可在首次 HTTP 配置生效后执行：
+
+```bash
+sudo certbot --nginx -d memesee.world -d www.memesee.world
+bash deploy/deploy.sh
+```
+
+生产流量路径：
+
+```text
+浏览器 -> Nginx :443
+  /        -> 127.0.0.1:3000 -> frontend 容器
+  /api/    -> 127.0.0.1:8080 -> gateway-service 容器
+  /media/  -> 127.0.0.1:9000 -> MinIO bucket: memesee-post-images
+```
+
+`minio-init` 容器会自动创建 `memesee-post-images` bucket，并设置匿名下载权限，让 `https://memesee.world/media/...` 可以直接读取帖子图片。MinIO 管理端口仍然只绑定 `127.0.0.1`，不要直接暴露到公网。
+
+之后每次本地开发完成：
+
+```bash
+git add .
+git commit -m "你的更新说明"
+git push
+```
+
+服务器执行：
+
+```bash
+cd /opt/memesee
+bash deploy/deploy.sh
+```
+
 ## 上线前检查
 
 - 复制 `.env.example` 为 `.env` 后替换所有 `replace-with-...`，不要沿用示例密钥。
