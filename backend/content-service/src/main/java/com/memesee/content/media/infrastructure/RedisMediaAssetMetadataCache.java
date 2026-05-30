@@ -18,7 +18,6 @@ public class RedisMediaAssetMetadataCache implements MediaAssetMetadataCache {
     private final Duration freshnessTtl;
     private final Duration nullValueTtl;
     private final String keyPrefix;
-    private final String legacyKeyPrefix;
     private final VersionedJsonRedisCacheSupport cacheSupport;
 
     public RedisMediaAssetMetadataCache(
@@ -31,7 +30,6 @@ public class RedisMediaAssetMetadataCache implements MediaAssetMetadataCache {
         this.freshnessTtl = properties.getFreshnessTtl();
         this.nullValueTtl = properties.getNullValueTtl();
         this.keyPrefix = properties.getKeyPrefix();
-        this.legacyKeyPrefix = properties.getLegacyKeyPrefix();
         this.cacheSupport = new VersionedJsonRedisCacheSupport(
                 redisTemplate,
                 new VersionedJsonCachePayloadCodec(objectMapper, properties.getSerializationVersion()),
@@ -43,14 +41,14 @@ public class RedisMediaAssetMetadataCache implements MediaAssetMetadataCache {
 
     @Override
     public Optional<MediaAssetResponse> getMediaAsset(Long assetId) {
-        return cacheSupport.read(buildRedisKey(assetId), buildLegacyRedisKey(assetId), MediaAssetResponse.class);
+        return cacheSupport.read(buildRedisKey(assetId), null, MediaAssetResponse.class);
     }
 
     @Override
     public PlatformCacheReadResult<MediaAssetResponse> getMediaAssetSnapshot(Long assetId) {
         return cacheSupport.readSnapshot(
                 buildRedisKey(assetId),
-                buildLegacyRedisKey(assetId),
+                null,
                 MediaAssetResponse.class,
                 freshnessTtl
         );
@@ -62,6 +60,14 @@ public class RedisMediaAssetMetadataCache implements MediaAssetMetadataCache {
             return;
         }
         cacheSupport.write(buildRedisKey(response.id()), response, ttl);
+    }
+
+    @Override
+    public void evictMediaAsset(Long assetId) {
+        if (assetId == null) {
+            return;
+        }
+        cacheSupport.evict(buildRedisKey(assetId), null);
     }
 
     @Override
@@ -94,9 +100,5 @@ public class RedisMediaAssetMetadataCache implements MediaAssetMetadataCache {
 
     private String buildRedisKey(Long assetId) {
         return keyPrefix + ":" + String.valueOf(assetId) + ":detail";
-    }
-
-    private String buildLegacyRedisKey(Long assetId) {
-        return legacyKeyPrefix + ":" + String.valueOf(assetId);
     }
 }

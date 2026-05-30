@@ -9,6 +9,7 @@ import {
   removeMarkdownImages,
   withMediaCacheVersion,
 } from "../../../shared/state/appHelpers";
+import { DETAIL_IMAGE_SIZES } from "../../../shared/media/responsiveImages";
 import { resolveMarkdownImageSizing } from "../../../shared/state/markdownImageSizing";
 
 function extractCodeText(children) {
@@ -84,6 +85,41 @@ function toOriginalMediaUrl(url) {
   return url;
 }
 
+function toVariantMediaUrl(url, variant) {
+  if (!url || !url.includes("/api/media-assets/")) {
+    return "";
+  }
+  try {
+    const parsed = new URL(url, window.location.origin);
+    if (parsed.pathname.includes("/api/media-assets/") && parsed.pathname.endsWith("/binary")) {
+      parsed.searchParams.set("variant", variant);
+      return `${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+function buildMarkdownImageSource(url) {
+  const candidates = [
+    ["small", 720],
+    ["medium", 1080],
+    ["display", 1600],
+  ]
+    .map(([variant, width]) => {
+      const variantUrl = toVariantMediaUrl(url, variant);
+      return variantUrl ? `${variantUrl} ${width}w` : "";
+    })
+    .filter(Boolean);
+  return {
+    src: url,
+    srcSet: candidates.join(", "),
+    sizes: DETAIL_IMAGE_SIZES,
+    originalUrl: toOriginalMediaUrl(url),
+  };
+}
+
 export function useDetailMarkdown({
   apiBase,
   detailImageUrls,
@@ -119,21 +155,32 @@ export function useDetailMarkdown({
         const originalGallery = detailImageUrls
           .map((url) => withMediaCacheVersion(url, mediaVersionSeed))
           .map(toOriginalMediaUrl);
+        const imageSource = buildMarkdownImageSource(normalized);
+        const imageSources = detailImageUrls
+          .map((url) => withMediaCacheVersion(url, mediaVersionSeed))
+          .map(buildMarkdownImageSource);
         const imageSizing = resolveMarkdownImageSizing({ alt, title });
         return (
           <button
             type="button"
             className="markdown-image-trigger"
             style={imageSizing.containerStyle}
-            onClick={() => openImageViewer(originalUrl, originalGallery)}
+            onClick={() => openImageViewer(normalized, detailImageUrls, {
+              originalUrl,
+              originalImages: originalGallery,
+              imageSources,
+            })}
           >
             <span className="markdown-image-frame" style={imageSizing.frameStyle}>
               <img
                 src={normalized}
+                srcSet={imageSource.srcSet || undefined}
+                sizes={imageSource.sizes}
                 alt={imageSizing.alt || "image"}
                 className="markdown-inline-image"
                 style={imageSizing.imageStyle}
                 loading="lazy"
+                decoding="async"
               />
             </span>
           </button>

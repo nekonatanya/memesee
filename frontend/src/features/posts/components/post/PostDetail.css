@@ -864,6 +864,7 @@
 }
 
 .post-detail-paper .post-rich-gallery-frame {
+  position: relative;
   display: flex;
   width: 100%;
   height: 100%;
@@ -876,6 +877,27 @@
   box-shadow: none;
   cursor: zoom-in;
   overflow: visible;
+}
+
+.post-detail-paper .post-rich-gallery-status {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  max-width: calc(100% - 28px);
+  padding: 6px 10px;
+  border: 1px solid rgba(47, 36, 27, 0.28);
+  border-radius: 999px;
+  background: rgba(47, 36, 27, 0.9);
+  color: #fffdf0;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 2px 2px 0 rgba(47, 36, 27, 0.1);
+}
+
+.post-detail-paper .post-rich-gallery-status.is-failed {
+  background: rgba(173, 59, 50, 0.94);
 }
 
 .post-detail-paper .post-rich-gallery-image-shell {

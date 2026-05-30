@@ -17,4 +17,14 @@ public interface MainPostFeedItemRepository extends JpaRepository<MainPostFeedIt
               AND deleted_at IS NULL
             """, nativeQuery = true)
     int incrementViewStats(@Param("mainPostId") Long mainPostId, @Param("delta") long delta);
+
+    @Modifying
+    @Query(value = """
+            UPDATE main_post_feed_items
+            SET media_assets_json = :mediaAssetsJson,
+                projection_updated_at = CURRENT_TIMESTAMP(6)
+            WHERE main_post_id = :mainPostId
+              AND deleted_at IS NULL
+            """, nativeQuery = true)
+    int updateMediaAssetsJson(@Param("mainPostId") Long mainPostId, @Param("mediaAssetsJson") String mediaAssetsJson);
 }

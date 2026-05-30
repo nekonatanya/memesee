@@ -18,6 +18,8 @@ public class MediaStorageProperties {
         private String secretKey = "minioadmin";
         private String bucketName = "memesee-post-images";
         private boolean autoCreateBucket = true;
+        private boolean directDeliveryEnabled = false;
+        private String publicBaseUrl = "";
 
         public String getEndpoint() {
             return endpoint;
@@ -57,6 +59,22 @@ public class MediaStorageProperties {
 
         public void setAutoCreateBucket(boolean autoCreateBucket) {
             this.autoCreateBucket = autoCreateBucket;
+        }
+
+        public boolean isDirectDeliveryEnabled() {
+            return directDeliveryEnabled;
+        }
+
+        public void setDirectDeliveryEnabled(boolean directDeliveryEnabled) {
+            this.directDeliveryEnabled = directDeliveryEnabled;
+        }
+
+        public String getPublicBaseUrl() {
+            return publicBaseUrl;
+        }
+
+        public void setPublicBaseUrl(String publicBaseUrl) {
+            this.publicBaseUrl = publicBaseUrl;
         }
     }
 }

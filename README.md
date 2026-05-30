@@ -23,8 +23,8 @@ memesee
 - Frontend: React 18, Vite 5, Axios, React Markdown, Remark GFM
 - Backend: Java 21, Spring Boot 3.3.5, Spring Cloud Gateway 2023.0.3
 - Data: MySQL 8.4, Flyway, Spring Data JPA, MyBatis
-- Cache & Async: Redis 7.4, Caffeine, Redisson, transactional outbox
-- Search & Media: Meilisearch, MinIO
+- Cache & Async: Redis 7.4, RabbitMQ 4.1, Caffeine, Redisson, transactional outbox
+- Search & Media: Meilisearch, MinIO, WebP media variants
 - Auth: JWT
 
 ## 本地依赖
@@ -54,6 +54,7 @@ docker compose up -d
 | --- | --- | --- |
 | MySQL | `127.0.0.1:3307 -> 3306` | 初始化 `memesee_user`、`memesee_content` 两个库 |
 | Redis | `127.0.0.1:6379` | 缓存与分布式锁，启用密码 |
+| RabbitMQ | `127.0.0.1:5672`, `127.0.0.1:15672` | 媒体变体异步处理队列 |
 | MinIO | `127.0.0.1:9000`, `127.0.0.1:9001` | 媒体对象存储 |
 | Meilisearch | `127.0.0.1:7700` | 主帖搜索索引 |
 
@@ -122,13 +123,20 @@ VITE_API_BASE=http://localhost:8080
 | 变量 | 默认值 | 说明 |
 | --- | --- | --- |
 | `JWT_SECRET` / `APP_SECURITY_JWT_SECRET` | `change_me_to_a_long_secret_at_least_32_chars` | 用户与内容服务共享的 JWT 密钥 |
-| `JWT_EXPIRATION_SECONDS` | `86400` | JWT 有效期 |
+| `APP_SECURITY_JWT_EXPIRATION_SECONDS` | `86400` | JWT 有效期 |
 | `USER_DB_URL` | `jdbc:mysql://127.0.0.1:3307/memesee_user...` | 用户库连接 |
 | `CONTENT_DB_URL` | `jdbc:mysql://127.0.0.1:3307/memesee_content...` | 内容库连接 |
 | `USER_DB_USERNAME` / `CONTENT_DB_USERNAME` | `memesee_app` | 数据库用户名 |
 | `USER_DB_PASSWORD` / `CONTENT_DB_PASSWORD` | `memesee_app_password` | 数据库密码 |
 | `MEMESEE_REDIS_HOST` / `MEMESEE_REDIS_PORT` / `MEMESEE_REDIS_PASSWORD` | `127.0.0.1` / `6379` / 空 | Redis 连接 |
+| `MEMESEE_RABBITMQ_HOST` / `MEMESEE_RABBITMQ_PORT` | `127.0.0.1` / `5672` | RabbitMQ 连接 |
+| `CONTENT_MEDIA_PROCESSING_ASYNC_ENABLED` | `false` | 是否启用 RabbitMQ 异步生成媒体变体 |
+| `CONTENT_MEDIA_PROCESSING_MAX_ATTEMPTS` | `3` | 媒体变体队列最大重试次数，失败后进入 DLQ |
 | `CONTENT_MEDIA_MINIO_ENDPOINT` | `http://127.0.0.1:9000` | MinIO API 地址 |
+| `CONTENT_MEDIA_MINIO_AUTO_CREATE_BUCKET` | `true` | 是否自动创建媒体 bucket；生产可在预先建好 bucket 后关闭 |
+| `CONTENT_MEDIA_MAX_BYTES` | `20971520` | 单个媒体文件业务限制，默认 20 MiB |
+| `CONTENT_MEDIA_DIRECT_DELIVERY_ENABLED` | `false` | 是否让响应中的已生成图片变体使用对象存储/CDN 直出 URL |
+| `CONTENT_MEDIA_PUBLIC_BASE_URL` | 空 | 直出 URL 前缀，通常指向公开 bucket 或 CDN 路径 |
 | `CONTENT_SEARCH_MEILISEARCH_URL` | `http://127.0.0.1:7700` | Meilisearch 地址 |
 | `USER_SERVICE_URL` | `http://localhost:8081` | 内容服务调用用户服务 |
 | `CONTENT_SERVICE_URL` | `http://localhost:8083` | 网关转发内容服务 |
@@ -152,7 +160,7 @@ $env:SPRING_PROFILES_ACTIVE="prod"
 - 通知：互动与回复相关通知、已读状态、未读数量缓存。
 - 信息流：`/api/feed` 基于 `main_post_feed_items` 投影表查询，支持社区过滤、关键词和排序。
 - 搜索：主帖索引写入 Meilisearch，可通过内部接口重建索引。
-- 媒体：上传图片到 MinIO，并生成媒体变体记录。
+- 媒体：上传图片到 MinIO，生成 WebP 优先的缩略图、小图、中图和展示图，支持 RabbitMQ 异步处理、处理状态、失败重试和可选 CDN/对象存储直出。
 
 ## 主要接口
 
@@ -177,6 +185,12 @@ curl -X POST "http://localhost:8083/internal/feed/main-posts/rebuild" `
 
 curl -X POST "http://localhost:8083/internal/search/main-posts/rebuild" `
   -H "X-Internal-Service-Token: change_me_internal_service_token"
+
+curl -X POST "http://localhost:8083/internal/media-assets/variants/retry-failed?limit=20" `
+  -H "X-Internal-Service-Token: change_me_internal_service_token"
+
+curl -X POST "http://localhost:8083/internal/media-assets/123/variants/retry" `
+  -H "X-Internal-Service-Token: change_me_internal_service_token"
 ```
 
 ## 本地注册提示
@@ -197,6 +211,49 @@ VALUES
 - 两个后端服务都启用 Flyway，应用启动时会自动执行各自的 `src/main/resources/db/migration`。
 - `content-service` 的 `V14__reset_content_and_add_media_asset_variants.sql` 会清空已有内容、互动、通知和媒体记录，用于切换媒体变体模型；不要直接用于需要保留旧内容数据的环境。
 - MinIO bucket 默认为 `memesee-post-images`，内容服务会按配置自动创建。
+- 媒体变体队列使用死信队列 `memesee.media.variant-processing.dlq`。如果已上线环境中存在旧的同名 RabbitMQ 队列，修改 DLX 参数后需要删除旧队列再让服务自动重建。
+
+## 生产图片直出与 CDN
+
+默认 `CONTENT_MEDIA_DIRECT_DELIVERY_ENABLED=false`，前端会通过网关访问 `GET /api/media-assets/{assetId}/binary`，适合本地开发和未配置公开对象存储的环境。上线后建议改为对象存储或 CDN 直出，减少后端带宽占用并提升大图打开速度：
+
+```env
+CONTENT_MEDIA_DIRECT_DELIVERY_ENABLED=true
+CONTENT_MEDIA_PUBLIC_BASE_URL=https://cdn.example.com/memesee-post-images
+```
+
+`CONTENT_MEDIA_PUBLIC_BASE_URL` 必须指向可公开读取的 bucket 根路径或 CDN 前缀。对象 key 会追加在该前缀后，例如响应中的 `displayUrl` 会变成 `https://cdn.example.com/memesee-post-images/main-posts/.../display.webp`。
+
+如果暂时不用独立 CDN，也可以用 Nginx 反代 MinIO 的 bucket 路径：
+
+```nginx
+location /media/ {
+  proxy_pass http://minio:9000/memesee-post-images/;
+  proxy_set_header Host $host;
+  expires 365d;
+  add_header Cache-Control "public, max-age=31536000, immutable";
+}
+```
+
+此时可设置 `CONTENT_MEDIA_PUBLIC_BASE_URL=https://example.com/media`。MinIO 控制台端口、RabbitMQ 管理端口、数据库端口不要暴露到公网；只开放前端、网关和经过反代的媒体读取路径。若 bucket 设置为公开读取，建议仅放置帖子图片这类允许公开访问的对象。
+
+## 上线前检查
+
+- 复制 `.env.example` 为 `.env` 后替换所有 `replace-with-...`，不要沿用示例密钥。
+- 生产后端使用 `SPRING_PROFILES_ACTIVE=prod`，确保 `APP_SECURITY_JWT_SECRET`、`APP_SECURITY_INTERNAL_SERVICE_TOKEN`、数据库密码、Redis 密码、RabbitMQ 密码、MinIO 密钥和 Meilisearch Key 都已设置。
+- 只对公网暴露前端站点、网关入口和可选的 `/media/` 反代路径；MySQL、Redis、RabbitMQ、MinIO API/Console、Meilisearch 继续绑定内网或 `127.0.0.1`。
+- 图片链路以 `mediaAssets` 的 `thumb/small/medium/display/original` 为准；旧 Redis 媒体缓存 key 不再读取，旧测试图片或旧帖子可直接清空重建。
+- 第一次上线或修改 RabbitMQ 队列参数后，若 RabbitMQ 已有同名旧队列，需要删除旧队列再启动内容服务，让队列以当前 DLX 参数重建。
+
+## 清空本地测试数据
+
+本项目现在以新上传媒体的多尺寸 WebP 链路为准。若本地旧测试图片或旧帖子影响排查，可以直接清空本地 Docker 数据卷：
+
+```powershell
+.\scripts\reset-local-data.ps1 -ConfirmReset
+```
+
+这个命令会删除本地 MySQL、Redis、RabbitMQ、MinIO、Meilisearch 数据卷并重新启动基础设施。线上服务器不要使用该脚本。
 
 ## 常用命令
 
@@ -209,6 +266,9 @@ docker compose down
 
 # 停止并清空本地数据卷
 docker compose down -v
+
+# 停止并清空本地数据卷，然后重启基础设施
+.\scripts\reset-local-data.ps1 -ConfirmReset
 
 # 后端构建，需在仓库根目录执行
 cd backend

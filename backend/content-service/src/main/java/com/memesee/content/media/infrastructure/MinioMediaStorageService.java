@@ -10,6 +10,7 @@ import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
 import io.minio.errors.ErrorResponseException;
 import java.io.InputStream;
+import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -31,6 +32,8 @@ public class MinioMediaStorageService {
     private final MinioClient minioClient;
     private final String bucketName;
     private final boolean autoCreateBucket;
+    private final boolean directDeliveryEnabled;
+    private final String publicBaseUrl;
     private final long maxFileSizeBytes;
 
     public MinioMediaStorageService(
@@ -41,6 +44,8 @@ public class MinioMediaStorageService {
         this.minioClient = Objects.requireNonNull(minioClient, "minioClient must not be null");
         this.bucketName = mediaStorageProperties.getMinio().getBucketName();
         this.autoCreateBucket = mediaStorageProperties.getMinio().isAutoCreateBucket();
+        this.directDeliveryEnabled = mediaStorageProperties.getMinio().isDirectDeliveryEnabled();
+        this.publicBaseUrl = normalizePublicBaseUrl(mediaStorageProperties.getMinio().getPublicBaseUrl());
         this.maxFileSizeBytes = maxFileSizeBytes;
     }
 
@@ -71,6 +76,34 @@ public class MinioMediaStorageService {
         } catch (Exception ex) {
             throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
         }
+    }
+
+    public byte[] loadBytes(String bucketName, String objectKey) {
+        try (GetObjectResponse response = minioClient.getObject(GetObjectArgs.builder()
+                .bucket(resolveBucketName(bucketName))
+                .object(objectKey)
+                .build())) {
+            return response.readAllBytes();
+        } catch (ErrorResponseException ex) {
+            if ("NoSuchKey".equals(ex.errorResponse().code()) || "NoSuchBucket".equals(ex.errorResponse().code())) {
+                throw new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, "媒体资源不存在。");
+            }
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
+        } catch (Exception ex) {
+            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
+        }
+    }
+
+    public String buildPublicUrl(String bucketName, String objectKey) {
+        if (!directDeliveryEnabled || publicBaseUrl == null || publicBaseUrl.isBlank()) {
+            return "";
+        }
+        if (objectKey == null || objectKey.isBlank()) {
+            return "";
+        }
+        return publicBaseUrl + "/" + objectKey.trim();
     }
 
     private void ensureBucketReady() {
@@ -167,6 +200,13 @@ public class MinioMediaStorageService {
             return "application/octet-stream";
         }
         return contentType.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String normalizePublicBaseUrl(String value) {
+        if (value == null || value.isBlank()) {
+            return "";
+        }
+        return value.trim().replaceAll("/+$", "");
     }
 
     private String resolveBucketName(String bucketName) {

@@ -226,7 +226,7 @@ export default function ProfileNotificationPage({
       />
 
       {notifications.length === 0 && (
-        <div className="empty-state profile-empty-inline">暂无通知。</div>
+        <div className="paper-inline-status profile-empty-inline">暂无通知。</div>
       )}
       {groups.length > 0 && (
         <>
@@ -256,7 +256,7 @@ export default function ProfileNotificationPage({
             ))}
           </div>
           {activeItems.length === 0 && (
-            <div className="empty-state profile-empty-inline">暂无{activeGroup?.title || ""}通知。</div>
+            <div className="paper-inline-status profile-empty-inline">暂无{activeGroup?.title || ""}通知。</div>
           )}
         </>
       )}

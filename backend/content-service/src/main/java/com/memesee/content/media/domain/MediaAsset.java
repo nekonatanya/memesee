@@ -46,6 +46,10 @@ public class MediaAsset {
     @Column(nullable = false, length = 20)
     private MediaAssetStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private MediaAssetProcessingStatus processingStatus;
+
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -63,7 +67,8 @@ public class MediaAsset {
             String originalFilename,
             String contentType,
             long sizeBytes,
-            MediaAssetStatus status
+            MediaAssetStatus status,
+            MediaAssetProcessingStatus processingStatus
     ) {
         this.ownerUsername = ownerUsername;
         this.kind = kind;
@@ -73,6 +78,7 @@ public class MediaAsset {
         this.contentType = contentType;
         this.sizeBytes = sizeBytes;
         this.status = status;
+        this.processingStatus = processingStatus;
     }
 
     @PrePersist
@@ -123,6 +129,10 @@ public class MediaAsset {
         return status;
     }
 
+    public MediaAssetProcessingStatus getProcessingStatus() {
+        return processingStatus;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -133,5 +143,17 @@ public class MediaAsset {
 
     public boolean isActive() {
         return status == MediaAssetStatus.ACTIVE;
+    }
+
+    public void markProcessing() {
+        processingStatus = MediaAssetProcessingStatus.PROCESSING;
+    }
+
+    public void markReady() {
+        processingStatus = MediaAssetProcessingStatus.READY;
+    }
+
+    public void markFailed() {
+        processingStatus = MediaAssetProcessingStatus.FAILED;
     }
 }

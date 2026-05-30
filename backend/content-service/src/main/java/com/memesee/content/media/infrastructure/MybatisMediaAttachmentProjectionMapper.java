@@ -20,7 +20,8 @@ public interface MybatisMediaAttachmentProjectionMapper {
                 asset.kind AS kind,
                 asset.content_type AS content_type,
                 asset.original_filename AS original_filename,
-                asset.size_bytes AS size_bytes
+                asset.size_bytes AS size_bytes,
+                asset.processing_status AS processing_status
             FROM main_post_media_links link
             JOIN media_assets asset
               ON asset.id = link.media_asset_id
@@ -38,7 +39,8 @@ public interface MybatisMediaAttachmentProjectionMapper {
             @Result(property = "kind", column = "kind"),
             @Result(property = "contentType", column = "content_type"),
             @Result(property = "originalFilename", column = "original_filename"),
-            @Result(property = "sizeBytes", column = "size_bytes")
+            @Result(property = "sizeBytes", column = "size_bytes"),
+            @Result(property = "processingStatus", column = "processing_status")
     })
     List<MybatisMediaAttachmentProjectionRow> selectMainPostMedia(@Param("mainPostIds") Collection<Long> mainPostIds);
 
@@ -50,7 +52,8 @@ public interface MybatisMediaAttachmentProjectionMapper {
                 asset.kind AS kind,
                 asset.content_type AS content_type,
                 asset.original_filename AS original_filename,
-                asset.size_bytes AS size_bytes
+                asset.size_bytes AS size_bytes,
+                asset.processing_status AS processing_status
             FROM sub_post_media_links link
             JOIN media_assets asset
               ON asset.id = link.media_asset_id

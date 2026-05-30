@@ -10,6 +10,8 @@ public interface MainPostMediaLinkRepository extends JpaRepository<MainPostMedia
 
     List<MainPostMediaLink> findAllByMainPostIdInOrderByMainPostIdAscSortOrderAscIdAsc(Collection<Long> mainPostIds);
 
+    List<MainPostMediaLink> findAllByMediaAssetId(Long mediaAssetId);
+
     @Transactional
     void deleteAllByMainPostId(Long mainPostId);
 }

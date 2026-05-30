@@ -26,21 +26,43 @@ export function useAppChrome({
     return () => window.clearTimeout(timer);
   }, [message]);
 
-  function openImageViewer(url, sourceImages = []) {
+  function normalizeImageList(sourceImages, { keepEmpty = false } = {}) {
+    const normalizedImages = (Array.isArray(sourceImages) ? sourceImages : [])
+      .map((item) => normalizeAssetUrl(item, apiBase));
+    return keepEmpty
+      ? normalizedImages
+      : normalizedImages.filter(Boolean);
+  }
+
+  function openImageViewer(url, sourceImages = [], options = {}) {
     const normalized = normalizeAssetUrl(url || "", apiBase);
     if (!normalized) {
       return;
     }
-    const gallery = Array.from(
-      new Set(
-        (Array.isArray(sourceImages) ? sourceImages : [])
-          .map((item) => normalizeAssetUrl(item, apiBase))
-          .filter(Boolean),
-      ),
-    );
-    const images = gallery.length > 0 ? gallery : [normalized];
+    const imageSources = Array.isArray(options.imageSources)
+      ? options.imageSources.map((source) => ({
+          ...source,
+          src: normalizeAssetUrl(source?.src || source?.displayUrl || "", apiBase),
+          displayUrl: normalizeAssetUrl(source?.displayUrl || source?.src || "", apiBase),
+          originalUrl: normalizeAssetUrl(source?.originalUrl || "", apiBase),
+        }))
+      : [];
+    const gallery = normalizeImageList(sourceImages);
+    const sourceGallery = imageSources
+      .map((source) => source.src || source.displayUrl)
+      .filter(Boolean);
+    const images = gallery.length > 0 ? gallery : (sourceGallery.length > 0 ? sourceGallery : [normalized]);
     const index = Math.max(0, images.indexOf(normalized));
-    setImageViewer({ images, index });
+    const normalizedOriginalImages = normalizeImageList(options.originalImages, { keepEmpty: true });
+    const normalizedOriginalUrl = normalizeAssetUrl(options.originalUrl || "", apiBase);
+    const sourceOriginalImages = imageSources.map((source) => source.originalUrl || "");
+    const originalImages = images.map((image, imageIndex) => (
+      normalizedOriginalImages[imageIndex]
+      || sourceOriginalImages[imageIndex]
+      || (imageIndex === index && normalizedOriginalUrl ? normalizedOriginalUrl : "")
+      || image
+    ));
+    setImageViewer({ images, index, originalImages, imageSources });
   }
 
   function closeImageViewer() {

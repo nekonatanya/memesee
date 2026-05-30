@@ -22,7 +22,6 @@ public class RedisSubPostMediaCache implements SubPostMediaCache {
     private final Duration ttl;
     private final Duration freshnessTtl;
     private final String keyPrefix;
-    private final String legacyKeyPrefix;
     private final VersionedJsonRedisCacheSupport cacheSupport;
 
     public RedisSubPostMediaCache(
@@ -34,7 +33,6 @@ public class RedisSubPostMediaCache implements SubPostMediaCache {
         this.ttl = properties.getTtl();
         this.freshnessTtl = properties.getFreshnessTtl();
         this.keyPrefix = properties.getKeyPrefix();
-        this.legacyKeyPrefix = properties.getLegacyKeyPrefix();
         this.cacheSupport = new VersionedJsonRedisCacheSupport(
                 redisTemplate,
                 new VersionedJsonCachePayloadCodec(objectMapper, properties.getSerializationVersion()),
@@ -46,14 +44,14 @@ public class RedisSubPostMediaCache implements SubPostMediaCache {
 
     @Override
     public Optional<List<MediaAssetResponse>> getMedia(Long subPostId) {
-        return cacheSupport.read(buildRedisKey(subPostId), buildLegacyRedisKey(subPostId), MEDIA_TYPE);
+        return cacheSupport.read(buildRedisKey(subPostId), null, MEDIA_TYPE);
     }
 
     @Override
     public PlatformCacheReadResult<List<MediaAssetResponse>> getMediaSnapshot(Long subPostId) {
         return cacheSupport.readSnapshot(
                 buildRedisKey(subPostId),
-                buildLegacyRedisKey(subPostId),
+                null,
                 MEDIA_TYPE,
                 freshnessTtl
         );
@@ -72,7 +70,7 @@ public class RedisSubPostMediaCache implements SubPostMediaCache {
         if (subPostId == null) {
             return;
         }
-        cacheSupport.evict(buildRedisKey(subPostId), buildLegacyRedisKey(subPostId));
+        cacheSupport.evict(buildRedisKey(subPostId), null);
     }
 
     @Override
@@ -97,9 +95,5 @@ public class RedisSubPostMediaCache implements SubPostMediaCache {
 
     private String buildRedisKey(Long subPostId) {
         return keyPrefix + ":" + String.valueOf(subPostId) + ":attachments";
-    }
-
-    private String buildLegacyRedisKey(Long subPostId) {
-        return legacyKeyPrefix + ":" + String.valueOf(subPostId);
     }
 }

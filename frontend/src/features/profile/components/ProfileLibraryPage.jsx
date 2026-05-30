@@ -269,7 +269,7 @@ export default function ProfileLibraryPage({
       />
 
       {groups.length === 0 && (
-        <div className="empty-state profile-empty-inline">{pageMeta.empty}</div>
+        <div className="paper-inline-status profile-empty-inline">{pageMeta.empty}</div>
       )}
       {groups.length > 0 && (
         <LibraryMixedList

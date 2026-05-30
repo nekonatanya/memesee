@@ -18,7 +18,7 @@ export default function CommunityList({
       }`}
     >
       {loadingCommunities && !hasCommunities && (
-        <div className="community-loading">{"\u52a0\u8f7d\u793e\u533a\u4e2d..."}</div>
+        <div className="paper-inline-status community-loading">{"\u52a0\u8f7d\u793e\u533a\u4e2d..."}</div>
       )}
       {hasCommunities &&
         navigationCommunities.map((community, index) => (

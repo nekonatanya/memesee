@@ -53,7 +53,15 @@ export default function ComposerPage({
 
   return (
     <section className="feed-grid">
-      {!isLoggedIn && <article className="neo-card empty-state">请先登录后发布主帖。</article>}
+      {!isLoggedIn && (
+        <article className="feed-status-card feed-status-card-empty">
+          <div className="feed-status-mainline">
+            <span className="feed-status-mark" aria-hidden="true" />
+            <strong>请先登录后发布主帖</strong>
+          </div>
+          <span className="feed-status-subtext">登录后就可以选择分区、上传图片并发布内容。</span>
+        </article>
+      )}
       {isLoggedIn && (
         <article className="composer-page composer-inline-page composer-paper">
           <form id="composer-form" onSubmit={submitPost} className="compose-inline-form">

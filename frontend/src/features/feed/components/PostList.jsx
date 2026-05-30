@@ -16,9 +16,26 @@ export default function PostList({
 
   return (
     <div className={`post-list-flow ${loadingPosts && hasPosts ? "is-refreshing" : ""}`}>
-      {loadingPosts && !hasPosts && <div className="neo-card empty-state">加载中...</div>}
+      {loadingPosts && !hasPosts && (
+        <div className="feed-status-card is-loading" role="status" aria-live="polite">
+          <span className="feed-status-kicker">主帖信息流</span>
+          <strong>正在加载主帖</strong>
+          <span className="feed-status-subtext">稍等一下，正在整理最新内容。</span>
+          <span className="feed-status-dots" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+        </div>
+      )}
       {!loadingPosts && !hasPosts && (
-        <div className="neo-card empty-state">没有匹配的主帖。</div>
+        <div className="feed-status-card feed-status-card-empty">
+          <div className="feed-status-mainline">
+            <span className="feed-status-mark" aria-hidden="true" />
+            <strong>没有匹配的主帖</strong>
+          </div>
+          <span className="feed-status-subtext">这片区域暂时很安静。可以换个关键词、切回大厅，或发布一条新主帖。</span>
+        </div>
       )}
       {hasPosts &&
         filteredPosts.map((post) => (

@@ -8,6 +8,7 @@ public class MybatisMediaAssetMetadataProjectionRow {
     private String originalFilename;
     private String contentType;
     private Long sizeBytes;
+    private String processingStatus;
 
     public Long getAssetId() {
         return assetId;
@@ -55,5 +56,13 @@ public class MybatisMediaAssetMetadataProjectionRow {
 
     public void setSizeBytes(Long sizeBytes) {
         this.sizeBytes = sizeBytes;
+    }
+
+    public String getProcessingStatus() {
+        return processingStatus;
+    }
+
+    public void setProcessingStatus(String processingStatus) {
+        this.processingStatus = processingStatus;
     }
 }

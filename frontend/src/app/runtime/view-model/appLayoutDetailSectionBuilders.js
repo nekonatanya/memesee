@@ -18,6 +18,7 @@ export function buildDetailGalleryProps({ detail }) {
   return {
     richDetailImages: detail.richDetailImages,
     richOriginalImages: detail.richOriginalImages,
+    richImageSources: detail.richImageSources,
     detailMediaIndex: detail.detailMediaIndex,
     setDetailMediaIndex: detail.setDetailMediaIndex,
     openImageViewer: detail.openImageViewer,

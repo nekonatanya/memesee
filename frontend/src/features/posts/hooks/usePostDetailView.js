@@ -323,6 +323,18 @@ export function usePostDetailView({
       ? selectedPost.mediaOriginalUrls
       : richDetailImages;
   }, [richDetailImages, selectedPost]);
+  const richImageSources = useMemo(() => {
+    if (!selectedPost || selectedPost.postMode !== "rich") {
+      return [];
+    }
+    return Array.isArray(selectedPost.mediaImageSources) && selectedPost.mediaImageSources.length > 0
+      ? selectedPost.mediaImageSources
+      : richDetailImages.map((src, index) => ({
+          src,
+          displayUrl: src,
+          originalUrl: richOriginalImages[index] || src,
+        }));
+  }, [richDetailImages, richOriginalImages, selectedPost]);
   const subPostNodeMap = useMemo(() => {
     if (!Array.isArray(subPosts) || subPosts.length === 0) {
       return new Map();
@@ -396,6 +408,7 @@ export function usePostDetailView({
     detailImageUrls,
     richDetailImages,
     richOriginalImages,
+    richImageSources,
     subPostNodeMap,
     orderedSubPostFloors,
     loadPostDetail,

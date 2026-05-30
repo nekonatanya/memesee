@@ -454,9 +454,9 @@ export default function SubPostPanel({
       {(loadingSubPosts || subPosts.length === 0 || canManageMainPost) && (
         <div className="sub-post-panel-head">
           <div className="sub-post-panel-status">
-            {loadingSubPosts && <p className="side-empty">正在加载子帖...</p>}
+            {loadingSubPosts && <p className="paper-inline-status side-empty">正在加载子帖...</p>}
             {!loadingSubPosts && subPosts.length === 0 && (
-              <p className="side-empty">还没有子帖，来抢首帖吧。</p>
+              <p className="paper-inline-status side-empty">还没有子帖，来抢首帖吧。</p>
             )}
           </div>
           {canManageMainPost && (

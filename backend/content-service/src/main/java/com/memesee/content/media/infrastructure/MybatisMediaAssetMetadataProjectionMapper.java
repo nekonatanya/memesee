@@ -19,7 +19,8 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
                 kind AS kind,
                 original_filename AS original_filename,
                 content_type AS content_type,
-                size_bytes AS size_bytes
+                size_bytes AS size_bytes,
+                processing_status AS processing_status
             FROM media_assets
             WHERE id = #{assetId}
               AND status = 'ACTIVE'
@@ -31,7 +32,8 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
             @Result(property = "kind", column = "kind"),
             @Result(property = "originalFilename", column = "original_filename"),
             @Result(property = "contentType", column = "content_type"),
-            @Result(property = "sizeBytes", column = "size_bytes")
+            @Result(property = "sizeBytes", column = "size_bytes"),
+            @Result(property = "processingStatus", column = "processing_status")
     })
     MybatisMediaAssetMetadataProjectionRow selectActiveMediaAsset(@Param("assetId") Long assetId);
 
@@ -43,7 +45,8 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
                 kind AS kind,
                 original_filename AS original_filename,
                 content_type AS content_type,
-                size_bytes AS size_bytes
+                size_bytes AS size_bytes,
+                processing_status AS processing_status
             FROM media_assets
             WHERE owner_username = #{ownerUsername}
               AND status = 'ACTIVE'

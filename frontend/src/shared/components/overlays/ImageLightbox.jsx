@@ -21,7 +21,13 @@ function midpoint(a, b) {
   };
 }
 
-export default function ImageLightbox({ images, startIndex, onClose }) {
+export default function ImageLightbox({
+  images,
+  originalImages = [],
+  imageSources = [],
+  startIndex,
+  onClose,
+}) {
   const stageRef = useRef(null);
   const mediaRef = useRef(null);
   const zoomRef = useRef(1);
@@ -51,7 +57,7 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
   });
 
   const safeImages = useMemo(
-    () => Array.from(new Set((Array.isArray(images) ? images : []).filter(Boolean))),
+    () => (Array.isArray(images) ? images.map((image) => String(image || "")).filter(Boolean) : []),
     [images],
   );
   const [index, setIndex] = useState(
@@ -60,9 +66,20 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const [useOriginal, setUseOriginal] = useState(false);
   const canPrev = index > 0;
   const canNext = index < safeImages.length - 1;
-  const currentUrl = safeImages[index] || "";
+  const safeOriginalImages = useMemo(
+    () => (Array.isArray(originalImages) ? originalImages.map((image) => String(image || "")) : []),
+    [originalImages],
+  );
+  const displayUrl = safeImages[index] || "";
+  const currentImageSource = Array.isArray(imageSources) ? imageSources[index] || {} : {};
+  const originalCandidateUrl = currentImageSource.originalUrl || safeOriginalImages[index] || "";
+  const originalUrl = originalCandidateUrl || displayUrl;
+  const hasOriginalCandidate = Boolean(originalCandidateUrl);
+  const hasDistinctOriginalUrl = Boolean(originalUrl && originalUrl !== displayUrl);
+  const currentUrl = useOriginal && hasOriginalCandidate ? originalUrl : displayUrl;
   const onCloseRef = useRef(onClose);
   const zoomInRef = useRef(() => {});
   const zoomOutRef = useRef(() => {});
@@ -102,6 +119,7 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
       return;
     }
     setIndex(clampNumber(startIndex ?? 0, 0, safeImages.length - 1));
+    setUseOriginal(false);
     resetView();
   }, [safeImages, startIndex]);
 
@@ -121,10 +139,12 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
       }
       if (event.key === "ArrowLeft") {
         setIndex((value) => Math.max(0, value - 1));
+        setUseOriginal(false);
         resetView();
       }
       if (event.key === "ArrowRight") {
         setIndex((value) => Math.min(safeImages.length - 1, value + 1));
+        setUseOriginal(false);
         resetView();
       }
       if (event.key === "+" || event.key === "=") {
@@ -227,6 +247,7 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
       return;
     }
     setIndex((value) => Math.max(0, value - 1));
+    setUseOriginal(false);
     resetView();
   }
 
@@ -235,6 +256,7 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
       return;
     }
     setIndex((value) => Math.min(safeImages.length - 1, value + 1));
+    setUseOriginal(false);
     resetView();
   }
 
@@ -483,9 +505,13 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
           <img
             ref={mediaRef}
             src={currentUrl}
+            srcSet={!useOriginal ? currentImageSource.srcSet || undefined : undefined}
+            sizes={!useOriginal ? currentImageSource.sizes || "100vw" : undefined}
             alt="Preview image"
             className="image-lightbox-media"
             draggable={false}
+            decoding="async"
+            fetchPriority="high"
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`,
             }}
@@ -507,6 +533,30 @@ export default function ImageLightbox({ images, startIndex, onClose }) {
         </button>
         <button type="button" className="image-lightbox-tool" onClick={zoomIn} aria-label="Zoom in">
           +
+        </button>
+        <button
+          type="button"
+          className={`image-lightbox-tool original ${useOriginal ? "active" : ""}`}
+          onClick={() => {
+            if (!hasOriginalCandidate) {
+              return;
+            }
+            setUseOriginal((value) => !value);
+            resetView();
+          }}
+          disabled={!hasOriginalCandidate}
+          aria-label={
+            hasDistinctOriginalUrl
+              ? (useOriginal ? "使用展示图" : "查看原图")
+              : (hasOriginalCandidate ? "当前已是原图" : "原图不可用")
+          }
+          title={
+            hasDistinctOriginalUrl
+              ? (useOriginal ? "使用展示图" : "查看原图")
+              : (hasOriginalCandidate ? "当前已是原图" : "原图不可用")
+          }
+        >
+          {useOriginal ? "展示图" : "原图"}
         </button>
       </div>
     </div>

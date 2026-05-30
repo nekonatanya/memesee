@@ -20,6 +20,8 @@ export function buildLightboxProps({ shell }) {
   return shell.imageViewer
     ? {
         images: shell.imageViewer.images,
+        originalImages: shell.imageViewer.originalImages,
+        imageSources: shell.imageViewer.imageSources,
         startIndex: shell.imageViewer.index,
         onClose: shell.closeImageViewer,
       }

@@ -8,6 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class MediaAssetMetadataCacheProperties extends PlatformCacheProperties {
 
     public MediaAssetMetadataCacheProperties() {
-        super(Duration.ofMinutes(10), "memesee:content:media-asset-metadata", "content:media-asset:metadata");
+        super(Duration.ofMinutes(10), "memesee:content:media-asset-metadata", null);
     }
 }

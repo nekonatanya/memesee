@@ -10,6 +10,8 @@ public interface SubPostMediaLinkRepository extends JpaRepository<SubPostMediaLi
 
     List<SubPostMediaLink> findAllBySubPostIdInOrderBySubPostIdAscSortOrderAscIdAsc(Collection<Long> subPostIds);
 
+    List<SubPostMediaLink> findAllByMediaAssetId(Long mediaAssetId);
+
     @Transactional
     void deleteAllBySubPostId(Long subPostId);
 }

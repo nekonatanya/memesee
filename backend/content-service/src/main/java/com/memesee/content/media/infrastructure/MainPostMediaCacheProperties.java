@@ -8,6 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class MainPostMediaCacheProperties extends PlatformCacheProperties {
 
     public MainPostMediaCacheProperties() {
-        super(Duration.ofMinutes(10), "memesee:content:main-post-media", "content:main-post-media");
+        super(Duration.ofMinutes(10), "memesee:content:main-post-media", null);
     }
 }

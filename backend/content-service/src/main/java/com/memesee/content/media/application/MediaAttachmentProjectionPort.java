@@ -15,7 +15,8 @@ public interface MediaAttachmentProjectionPort {
             String kind,
             String contentType,
             String originalFilename,
-            long sizeBytes
+            long sizeBytes,
+            String processingStatus
     ) {
     }
 }

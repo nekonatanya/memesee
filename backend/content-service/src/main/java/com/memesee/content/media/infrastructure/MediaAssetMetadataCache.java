@@ -16,6 +16,9 @@ public interface MediaAssetMetadataCache {
 
     void putMediaAsset(MediaAssetResponse response);
 
+    default void evictMediaAsset(Long assetId) {
+    }
+
     default void putMissingMediaAsset(Long assetId) {
     }
 

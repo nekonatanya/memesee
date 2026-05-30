@@ -4,14 +4,20 @@ import {
   extractImageUrls,
   withMediaCacheVersion,
 } from "../../../shared/state/appHelpers";
+import {
+  buildResponsiveImageSources,
+  FEED_IMAGE_SIZES,
+  DETAIL_IMAGE_SIZES,
+} from "../../../shared/media/responsiveImages";
 import { calculateHeatScore, normalizeAssetUrl } from "./contentApiShared";
 
 export function normalizeMediaAsset(apiBase, asset) {
   const safeAsset = asset && typeof asset === "object" ? asset : {};
   const assetId = Number(safeAsset.id || 0);
-  const fallbackPath = assetId > 0 ? `/api/media-assets/${assetId}/binary` : "";
-  const rawUrl = safeAsset.url || safeAsset.displayUrl || fallbackPath;
-  const rawDisplayUrl = safeAsset.displayUrl || safeAsset.url || fallbackPath;
+  const rawUrl = safeAsset.url || safeAsset.displayUrl || "";
+  const rawDisplayUrl = safeAsset.displayUrl || safeAsset.url || "";
+  const rawMediumUrl = safeAsset.mediumUrl || rawDisplayUrl;
+  const rawSmallUrl = safeAsset.smallUrl || rawMediumUrl;
   const rawThumbUrl = safeAsset.thumbUrl || rawDisplayUrl;
   const rawOriginalUrl = safeAsset.originalUrl || rawDisplayUrl;
   const variants = Array.isArray(safeAsset.variants)
@@ -29,6 +35,8 @@ export function normalizeMediaAsset(apiBase, asset) {
     kind: String(safeAsset.kind || "IMAGE"),
     url: normalizeAssetUrl(apiBase, rawUrl),
     thumbUrl: normalizeAssetUrl(apiBase, rawThumbUrl),
+    smallUrl: normalizeAssetUrl(apiBase, rawSmallUrl),
+    mediumUrl: normalizeAssetUrl(apiBase, rawMediumUrl),
     displayUrl: normalizeAssetUrl(apiBase, rawDisplayUrl),
     originalUrl: normalizeAssetUrl(apiBase, rawOriginalUrl),
     contentType: String(safeAsset.contentType || ""),
@@ -36,6 +44,7 @@ export function normalizeMediaAsset(apiBase, asset) {
     sizeBytes: Number(safeAsset.sizeBytes || 0),
     width: Number(safeAsset.width || 0),
     height: Number(safeAsset.height || 0),
+    processingStatus: String(safeAsset.processingStatus || "READY"),
     variants,
   };
 }
@@ -50,6 +59,14 @@ export function mapMainPost(apiBase, payload, { detailed = false } = {}) {
     ? safePost.mediaAssets.map((asset) => normalizeMediaAsset(apiBase, asset))
     : [];
   const latestActivityAt = resolveLatestActivityAt(safePost);
+  const mediaImageSources = buildResponsiveImageSources(mediaAssets, {
+    prefer: "detail",
+    sizes: DETAIL_IMAGE_SIZES,
+  });
+  const previewImageSources = buildResponsiveImageSources(mediaAssets.slice(0, 3), {
+    prefer: "feed",
+    sizes: FEED_IMAGE_SIZES,
+  });
   const backendHotScore = Number(safePost.heatScore ?? safePost.hotScore);
   const content = detailed
     ? String(safePost.content || "")
@@ -67,11 +84,13 @@ export function mapMainPost(apiBase, payload, { detailed = false } = {}) {
     content,
     preview: detailed ? undefined : buildPreview(content),
     postMode: mediaAssets.length > 0 ? "rich" : "long",
-    mediaUrls: mediaAssets.map((asset) => asset.displayUrl || asset.url).filter(Boolean),
+    mediaUrls: mediaAssets.map((asset) => asset.displayUrl || asset.mediumUrl || asset.url).filter(Boolean),
     mediaOriginalUrls: mediaAssets
       .map((asset) => asset.originalUrl || asset.displayUrl || asset.url)
       .filter(Boolean),
     mediaAssets,
+    mediaImageSources,
+    previewImageSources,
     author: String(safePost.authorUsername || ""),
     createdAt: safePost.createdAt || null,
     updatedAt: safePost.updatedAt || safePost.createdAt || null,
@@ -129,7 +148,7 @@ export function mapSubPost(apiBase, payload) {
     childSubPostCount: Number(safeSubPost.childSubPostCount || 0),
     likedByMe: Boolean(safeSubPost.likedByMe),
     favoritedByMe: Boolean(safeSubPost.favoritedByMe),
-    mediaUrls: mediaAssets.map((asset) => asset.displayUrl || asset.url).filter(Boolean),
+    mediaUrls: mediaAssets.map((asset) => asset.displayUrl || asset.mediumUrl || asset.url).filter(Boolean),
     mediaOriginalUrls: mediaAssets
       .map((asset) => asset.originalUrl || asset.displayUrl || asset.url)
       .filter(Boolean),

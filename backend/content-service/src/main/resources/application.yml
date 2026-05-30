@@ -36,6 +36,12 @@ spring:
       connect-timeout: ${MEMESEE_REDIS_CONNECT_TIMEOUT:3s}
       ssl:
         enabled: ${MEMESEE_REDIS_SSL_ENABLED:false}
+  rabbitmq:
+    host: ${MEMESEE_RABBITMQ_HOST:127.0.0.1}
+    port: ${MEMESEE_RABBITMQ_PORT:5672}
+    username: ${MEMESEE_RABBITMQ_USERNAME:memesee}
+    password: ${MEMESEE_RABBITMQ_PASSWORD:memesee_password}
+    virtual-host: ${MEMESEE_RABBITMQ_VHOST:/}
 app:
   user-service:
     url: ${USER_SERVICE_URL:http://127.0.0.1:8081}
@@ -66,6 +72,19 @@ app:
       api-key: ${CONTENT_SEARCH_MEILISEARCH_API_KEY:memesee_master_key}
       index-uid: ${CONTENT_SEARCH_MEILISEARCH_INDEX_UID:main-posts}
   media:
+    processing:
+      async-enabled: ${CONTENT_MEDIA_PROCESSING_ASYNC_ENABLED:false}
+      queue:
+        exchange: ${CONTENT_MEDIA_PROCESSING_EXCHANGE:memesee.media}
+        name: ${CONTENT_MEDIA_PROCESSING_QUEUE:memesee.media.variant-processing}
+        routing-key: ${CONTENT_MEDIA_PROCESSING_ROUTING_KEY:media.variant.process}
+        dead-letter-exchange: ${CONTENT_MEDIA_PROCESSING_DLX:memesee.media.dlx}
+        dead-letter-name: ${CONTENT_MEDIA_PROCESSING_DLQ:memesee.media.variant-processing.dlq}
+        dead-letter-routing-key: ${CONTENT_MEDIA_PROCESSING_DLQ_ROUTING_KEY:media.variant.process.dead}
+        max-attempts: ${CONTENT_MEDIA_PROCESSING_MAX_ATTEMPTS:3}
+        initial-interval-ms: ${CONTENT_MEDIA_PROCESSING_RETRY_INITIAL_MS:1000}
+        multiplier: ${CONTENT_MEDIA_PROCESSING_RETRY_MULTIPLIER:2.0}
+        max-interval-ms: ${CONTENT_MEDIA_PROCESSING_RETRY_MAX_MS:10000}
     storage:
       minio:
         endpoint: ${CONTENT_MEDIA_MINIO_ENDPOINT:http://127.0.0.1:9000}
@@ -73,6 +92,8 @@ app:
         secret-key: ${CONTENT_MEDIA_MINIO_SECRET_KEY:minioadmin}
         bucket-name: ${CONTENT_MEDIA_MINIO_BUCKET:memesee-post-images}
         auto-create-bucket: ${CONTENT_MEDIA_MINIO_AUTO_CREATE_BUCKET:true}
+        direct-delivery-enabled: ${CONTENT_MEDIA_DIRECT_DELIVERY_ENABLED:false}
+        public-base-url: ${CONTENT_MEDIA_PUBLIC_BASE_URL:}
     upload:
       max-file-size-bytes: ${CONTENT_MEDIA_MAX_BYTES:20971520}
 logging:

@@ -8,6 +8,7 @@ public class MybatisMediaAttachmentProjectionRow {
     private String contentType;
     private String originalFilename;
     private Long sizeBytes;
+    private String processingStatus;
 
     public Long getOwnerId() {
         return ownerId;
@@ -55,5 +56,13 @@ public class MybatisMediaAttachmentProjectionRow {
 
     public void setSizeBytes(Long sizeBytes) {
         this.sizeBytes = sizeBytes;
+    }
+
+    public String getProcessingStatus() {
+        return processingStatus;
+    }
+
+    public void setProcessingStatus(String processingStatus) {
+        this.processingStatus = processingStatus;
     }
 }

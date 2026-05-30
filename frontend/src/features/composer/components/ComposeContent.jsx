@@ -97,7 +97,7 @@ export default function ComposeContent({
               {markdownPreviewContent}
             </ReactMarkdown>
           ) : (
-            <p className="compose-markdown-empty">暂无预览内容。</p>
+            <p className="paper-inline-status compose-markdown-empty">暂无预览内容。</p>
           )}
         </div>
       )}

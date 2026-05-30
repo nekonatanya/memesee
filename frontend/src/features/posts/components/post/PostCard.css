@@ -179,6 +179,7 @@
 }
 
 .post-media-item {
+  position: relative;
   width: 100%;
   min-width: 0;
   height: auto;
@@ -197,6 +198,27 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.post-media-status {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  max-width: calc(100% - 14px);
+  padding: 4px 7px;
+  border: 1px solid rgba(47, 36, 27, 0.4);
+  border-radius: 999px;
+  background: rgba(47, 36, 27, 0.9);
+  color: #fffdf0;
+  font-size: 0.68rem;
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 1px 1px 0 rgba(255, 247, 215, 0.28);
+}
+
+.post-media-status.is-failed {
+  background: rgba(173, 59, 50, 0.94);
 }
 
 .post-foot {

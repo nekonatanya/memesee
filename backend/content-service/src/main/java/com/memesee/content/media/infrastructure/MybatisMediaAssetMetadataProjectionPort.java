@@ -97,7 +97,8 @@ public class MybatisMediaAssetMetadataProjectionPort implements MediaAssetMetada
                 toKind(row.getKind()),
                 row.getOriginalFilename(),
                 row.getContentType(),
-                safeLong(row.getSizeBytes())
+                safeLong(row.getSizeBytes()),
+                row.getProcessingStatus()
         );
     }
 

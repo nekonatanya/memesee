@@ -125,7 +125,8 @@ public class JpaMediaAttachmentProjectionPort implements MediaAttachmentProjecti
                 asset.getKind().name(),
                 asset.getContentType(),
                 asset.getOriginalFilename(),
-                asset.getSizeBytes()
+                asset.getSizeBytes(),
+                asset.getProcessingStatus().name()
         );
     }
 

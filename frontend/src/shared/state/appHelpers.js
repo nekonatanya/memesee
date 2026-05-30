@@ -6,6 +6,11 @@ import {
   readBrowserUrl,
   scrollBrowserTo,
 } from "../platform/browserNavigation";
+import {
+  buildResponsiveImageSources,
+  DETAIL_IMAGE_SIZES,
+  FEED_IMAGE_SIZES,
+} from "../media/responsiveImages";
 
 const PREVIEW_LENGTH = 120;
 
@@ -323,16 +328,21 @@ export function normalizePostPayload(post, apiBase = "") {
   const mediaAssets = Array.isArray(safePost.mediaAssets)
     ? safePost.mediaAssets.map((asset) => {
         const safeAsset = asset && typeof asset === "object" ? asset : {};
-        const normalizedUrl = normalizeAssetUrl(safeAsset.url || safeAsset.displayUrl || "", apiBase);
-        const displayUrl = normalizeAssetUrl(safeAsset.displayUrl || normalizedUrl, apiBase);
-        const thumbUrl = normalizeAssetUrl(safeAsset.thumbUrl || displayUrl || normalizedUrl, apiBase);
-        const originalUrl = normalizeAssetUrl(safeAsset.originalUrl || displayUrl || normalizedUrl, apiBase);
+        const rawUrl = safeAsset.url || safeAsset.displayUrl || "";
+        const displayUrl = normalizeAssetUrl(safeAsset.displayUrl || rawUrl, apiBase);
+        const mediumUrl = normalizeAssetUrl(safeAsset.mediumUrl || displayUrl || rawUrl, apiBase);
+        const smallUrl = normalizeAssetUrl(safeAsset.smallUrl || mediumUrl || displayUrl || rawUrl, apiBase);
+        const thumbUrl = normalizeAssetUrl(safeAsset.thumbUrl || smallUrl || displayUrl || rawUrl, apiBase);
+        const originalUrl = normalizeAssetUrl(safeAsset.originalUrl || rawUrl || displayUrl, apiBase);
         return {
           ...safeAsset,
-          url: displayUrl || normalizedUrl,
+          url: displayUrl || normalizeAssetUrl(rawUrl, apiBase),
           thumbUrl,
-          displayUrl: displayUrl || normalizedUrl,
+          smallUrl,
+          mediumUrl,
+          displayUrl,
           originalUrl,
+          processingStatus: String(safeAsset.processingStatus || "READY"),
         };
       })
     : [];
@@ -341,6 +351,14 @@ export function normalizePostPayload(post, apiBase = "") {
       .map((url) => normalizeAssetUrl(url || "", apiBase))
       .filter(Boolean)
     : [];
+  const mediaImageSources = buildResponsiveImageSources(mediaAssets, {
+    prefer: "detail",
+    sizes: DETAIL_IMAGE_SIZES,
+  });
+  const previewImageSources = buildResponsiveImageSources(mediaAssets.slice(0, 3), {
+    prefer: "feed",
+    sizes: FEED_IMAGE_SIZES,
+  });
   const mediaVersionSeed = buildPostMediaCacheVersionSeed(safePost);
   const previewImages = existingPreviewImages.length > 0
     ? existingPreviewImages.map((url) => withMediaCacheVersion(url, mediaVersionSeed)).slice(0, 3)
@@ -366,6 +384,8 @@ export function normalizePostPayload(post, apiBase = "") {
     mediaUrls,
     mediaOriginalUrls,
     mediaAssets,
+    mediaImageSources,
+    previewImageSources,
     tags: Array.isArray(safePost.tags) ? safePost.tags : [],
     preview: buildPreview(safePost.content || ""),
     previewImages,

@@ -52,6 +52,9 @@ public class MediaAssetController {
         return ResponseEntity.ok()
                 .cacheControl(resolveCacheControl(cacheVersion))
                 .contentType(parseMediaType(loadedMediaAsset.contentType()))
+                .contentLength(loadedMediaAsset.contentLength())
+                .eTag(loadedMediaAsset.eTag())
+                .lastModified(loadedMediaAsset.lastModified())
                 .body(loadedMediaAsset.resource());
     }
 
@@ -61,6 +64,8 @@ public class MediaAssetController {
         }
         return switch (value.trim().toLowerCase(java.util.Locale.ROOT)) {
             case "thumb", "thumbnail" -> MediaAssetVariantKind.THUMB;
+            case "small", "mobile" -> MediaAssetVariantKind.SMALL;
+            case "medium", "tablet" -> MediaAssetVariantKind.MEDIUM;
             case "original", "raw" -> MediaAssetVariantKind.ORIGINAL;
             default -> MediaAssetVariantKind.DISPLAY;
         };

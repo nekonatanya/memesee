@@ -4,15 +4,40 @@ import UiIcon from "../../../../shared/components/UiIcon";
 export default function RichGallery({
   richDetailImages,
   richOriginalImages = [],
+  richImageSources = [],
   detailMediaIndex,
   setDetailMediaIndex,
   openImageViewer,
 }) {
-  const hasMultipleImages = richDetailImages.length > 1;
-  const currentImage = richDetailImages[detailMediaIndex];
-  const originalImages = Array.isArray(richOriginalImages) && richOriginalImages.length > 0
-    ? richOriginalImages
-    : richDetailImages;
+  const imageSources = useMemo(
+    () => (Array.isArray(richImageSources) && richImageSources.length > 0
+      ? richImageSources
+      : richDetailImages.map((src, index) => ({
+          src,
+          displayUrl: src,
+          originalUrl: richOriginalImages[index] || src,
+        }))),
+    [richDetailImages, richImageSources, richOriginalImages],
+  );
+  const displayImages = useMemo(
+    () => imageSources
+      .map((source) => source.src || source.displayUrl)
+      .filter(Boolean),
+    [imageSources],
+  );
+  const hasMultipleImages = displayImages.length > 1;
+  const currentImageSource = imageSources[detailMediaIndex] || {};
+  const currentImage = currentImageSource.src || currentImageSource.displayUrl || displayImages[detailMediaIndex];
+  const currentProcessingStatus = String(currentImageSource.processingStatus || "READY").toUpperCase();
+  const currentStatusLabel = currentProcessingStatus === "PROCESSING"
+    ? "图片处理中"
+    : (currentProcessingStatus === "FAILED" ? "处理失败" : "");
+  const originalImages = useMemo(
+    () => (Array.isArray(richOriginalImages) && richOriginalImages.length > 0
+      ? richOriginalImages
+      : imageSources.map((source) => source.originalUrl || source.displayUrl || source.src).filter(Boolean)),
+    [imageSources, richOriginalImages],
+  );
   const currentOriginalImage = originalImages[detailMediaIndex] || currentImage;
   const frameRef = useRef(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
@@ -41,35 +66,30 @@ export default function RichGallery({
   }, []);
 
   useEffect(() => {
-    let active = true;
-    richDetailImages.forEach((imageUrl) => {
-      if (!imageUrl || naturalSizeMap[imageUrl]) {
-        return;
-      }
-      const image = new Image();
-      image.onload = () => {
-        if (!active || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
-          return;
-        }
-        setNaturalSizeMap((prev) => {
-          if (prev[imageUrl]) {
-            return prev;
-          }
-          return {
-            ...prev,
-            [imageUrl]: {
-              width: image.naturalWidth,
-              height: image.naturalHeight,
-            },
-          };
-        });
-      };
-      image.src = imageUrl;
-    });
-    return () => {
-      active = false;
+    if (!currentImage || !naturalSizeMap[currentImage]) {
+      return undefined;
+    }
+    const candidates = [
+      displayImages[detailMediaIndex - 1],
+      displayImages[detailMediaIndex + 1],
+    ].filter(Boolean);
+    if (candidates.length === 0) {
+      return undefined;
+    }
+    const prefetchAdjacentImages = () => {
+      candidates.forEach((imageUrl) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.src = imageUrl;
+      });
     };
-  }, [richDetailImages, naturalSizeMap]);
+    if (typeof window.requestIdleCallback === "function") {
+      const idleId = window.requestIdleCallback(prefetchAdjacentImages, { timeout: 1200 });
+      return () => window.cancelIdleCallback?.(idleId);
+    }
+    const timer = window.setTimeout(prefetchAdjacentImages, 250);
+    return () => window.clearTimeout(timer);
+  }, [currentImage, detailMediaIndex, displayImages, naturalSizeMap]);
 
   const naturalSize = naturalSizeMap[currentImage];
   const renderSize = useMemo(() => {
@@ -120,7 +140,13 @@ export default function RichGallery({
           ref={frameRef}
           type="button"
           className="post-rich-gallery-frame"
-          onClick={() => openImageViewer(currentOriginalImage, originalImages)}
+          onClick={() =>
+            openImageViewer(currentImage, displayImages, {
+              originalUrl: currentOriginalImage,
+              originalImages,
+              imageSources,
+            })
+          }
           aria-label={`View image ${detailMediaIndex + 1}`}
         >
           <span
@@ -138,10 +164,19 @@ export default function RichGallery({
               key={currentImage}
               className="post-rich-gallery-image"
               src={currentImage}
+              srcSet={currentImageSource.srcSet || undefined}
+              sizes={currentImageSource.sizes || undefined}
               alt={`Rich media ${detailMediaIndex + 1}`}
               onLoad={onImageLoad}
+              decoding="async"
+              fetchPriority="high"
             />
           </span>
+          {currentStatusLabel && (
+            <span className={`post-rich-gallery-status is-${currentProcessingStatus.toLowerCase()}`}>
+              {currentStatusLabel}
+            </span>
+          )}
         </button>
 
         {hasMultipleImages && (
@@ -158,13 +193,13 @@ export default function RichGallery({
 
             <div className="post-rich-gallery-index">
               <span className="post-rich-gallery-count" aria-live="polite">
-                {detailMediaIndex + 1} / {richDetailImages.length}
+                {detailMediaIndex + 1} / {displayImages.length}
               </span>
               <input
                 type="range"
                 className="post-rich-gallery-range"
                 min="0"
-                max={richDetailImages.length - 1}
+                max={displayImages.length - 1}
                 value={detailMediaIndex}
                 onChange={(event) => setDetailMediaIndex(Number(event.target.value))}
                 aria-label="切换图片"
@@ -175,9 +210,9 @@ export default function RichGallery({
               type="button"
               className="post-rich-gallery-nav"
               onClick={() =>
-                setDetailMediaIndex((value) => Math.min(richDetailImages.length - 1, value + 1))
+                setDetailMediaIndex((value) => Math.min(displayImages.length - 1, value + 1))
               }
-              disabled={detailMediaIndex >= richDetailImages.length - 1}
+              disabled={detailMediaIndex >= displayImages.length - 1}
               aria-label="Next image"
             >
               <UiIcon name="chevron-right" />

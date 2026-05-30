@@ -17,7 +17,8 @@ public interface MediaAssetMetadataProjectionPort {
             MediaAssetKind kind,
             String originalFilename,
             String contentType,
-            long sizeBytes
+            long sizeBytes,
+            String processingStatus
     ) {
     }
 }

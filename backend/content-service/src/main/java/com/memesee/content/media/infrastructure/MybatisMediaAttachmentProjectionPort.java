@@ -86,7 +86,8 @@ public class MybatisMediaAttachmentProjectionPort implements MediaAttachmentProj
                 row.getKind(),
                 row.getContentType(),
                 row.getOriginalFilename(),
-                safeLong(row.getSizeBytes())
+                safeLong(row.getSizeBytes()),
+                row.getProcessingStatus()
         );
     }
 

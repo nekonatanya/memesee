@@ -22,7 +22,6 @@ public class RedisMainPostMediaCache implements MainPostMediaCache {
     private final Duration ttl;
     private final Duration freshnessTtl;
     private final String keyPrefix;
-    private final String legacyKeyPrefix;
     private final VersionedJsonRedisCacheSupport cacheSupport;
 
     public RedisMainPostMediaCache(
@@ -34,7 +33,6 @@ public class RedisMainPostMediaCache implements MainPostMediaCache {
         this.ttl = properties.getTtl();
         this.freshnessTtl = properties.getFreshnessTtl();
         this.keyPrefix = properties.getKeyPrefix();
-        this.legacyKeyPrefix = properties.getLegacyKeyPrefix();
         this.cacheSupport = new VersionedJsonRedisCacheSupport(
                 redisTemplate,
                 new VersionedJsonCachePayloadCodec(objectMapper, properties.getSerializationVersion()),
@@ -46,14 +44,14 @@ public class RedisMainPostMediaCache implements MainPostMediaCache {
 
     @Override
     public Optional<List<MediaAssetResponse>> getMedia(Long mainPostId) {
-        return cacheSupport.read(buildRedisKey(mainPostId), buildLegacyRedisKey(mainPostId), MEDIA_TYPE);
+        return cacheSupport.read(buildRedisKey(mainPostId), null, MEDIA_TYPE);
     }
 
     @Override
     public PlatformCacheReadResult<List<MediaAssetResponse>> getMediaSnapshot(Long mainPostId) {
         return cacheSupport.readSnapshot(
                 buildRedisKey(mainPostId),
-                buildLegacyRedisKey(mainPostId),
+                null,
                 MEDIA_TYPE,
                 freshnessTtl
         );
@@ -72,7 +70,7 @@ public class RedisMainPostMediaCache implements MainPostMediaCache {
         if (mainPostId == null) {
             return;
         }
-        cacheSupport.evict(buildRedisKey(mainPostId), buildLegacyRedisKey(mainPostId));
+        cacheSupport.evict(buildRedisKey(mainPostId), null);
     }
 
     @Override
@@ -97,9 +95,5 @@ public class RedisMainPostMediaCache implements MainPostMediaCache {
 
     private String buildRedisKey(Long mainPostId) {
         return keyPrefix + ":" + String.valueOf(mainPostId) + ":attachments";
-    }
-
-    private String buildLegacyRedisKey(Long mainPostId) {
-        return legacyKeyPrefix + ":" + String.valueOf(mainPostId);
     }
 }

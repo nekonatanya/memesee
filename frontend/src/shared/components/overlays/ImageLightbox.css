@@ -154,8 +154,25 @@
   font-size: 0.82rem;
 }
 
+.image-lightbox-tool.original {
+  min-width: 58px;
+  background: #e6fbf8;
+  font-size: 0.82rem;
+}
+
+.image-lightbox-tool.original.active {
+  background: #111;
+  color: #fff;
+}
+
 .image-lightbox-tool:hover {
   transform: translateY(-1px);
+}
+
+.image-lightbox-tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 768px) {

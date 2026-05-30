@@ -8,6 +8,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class SubPostMediaCacheProperties extends PlatformCacheProperties {
 
     public SubPostMediaCacheProperties() {
-        super(Duration.ofMinutes(10), "memesee:content:sub-post-media", "content:sub-post-media");
+        super(Duration.ofMinutes(10), "memesee:content:sub-post-media", null);
     }
 }

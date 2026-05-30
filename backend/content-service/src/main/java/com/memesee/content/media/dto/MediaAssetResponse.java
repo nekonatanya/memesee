@@ -7,6 +7,8 @@ public record MediaAssetResponse(
         String kind,
         String url,
         String thumbUrl,
+        String smallUrl,
+        String mediumUrl,
         String displayUrl,
         String originalUrl,
         String contentType,
@@ -14,6 +16,7 @@ public record MediaAssetResponse(
         long sizeBytes,
         int width,
         int height,
+        String processingStatus,
         List<MediaAssetVariantResponse> variants
 ) {
 }

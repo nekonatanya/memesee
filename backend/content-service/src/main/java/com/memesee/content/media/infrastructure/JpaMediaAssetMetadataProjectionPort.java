@@ -92,7 +92,8 @@ public class JpaMediaAssetMetadataProjectionPort implements MediaAssetMetadataPr
                 asset.getKind(),
                 asset.getOriginalFilename(),
                 asset.getContentType(),
-                asset.getSizeBytes()
+                asset.getSizeBytes(),
+                asset.getProcessingStatus().name()
         );
     }
 
