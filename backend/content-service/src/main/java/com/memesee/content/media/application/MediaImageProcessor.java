@@ -177,7 +177,7 @@ public class MediaImageProcessor {
                         DERIVATIVE_CONTENT_TYPE,
                         "webp"
                 );
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException | LinkageError ignored) {
                 // Fall back to JPEG if the runtime lacks a working WebP native writer.
             }
         }

@@ -6,6 +6,26 @@ DOMAIN="${DOMAIN:-memesee.world}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.prod.yml}"
 NGINX_SITE_NAME="${NGINX_SITE_NAME:-memesee.world.conf}"
 SKIP_PULL="${SKIP_PULL:-false}"
+HEALTHCHECK_RETRIES="${HEALTHCHECK_RETRIES:-30}"
+HEALTHCHECK_INTERVAL_SECONDS="${HEALTHCHECK_INTERVAL_SECONDS:-2}"
+
+wait_for_url() {
+  local url="$1"
+  local name="$2"
+  local attempt=1
+
+  until curl -fsS "$url" >/dev/null; do
+    if [ "$attempt" -ge "$HEALTHCHECK_RETRIES" ]; then
+      echo "$name is not responding after $HEALTHCHECK_RETRIES attempts: $url" >&2
+      return 1
+    fi
+    echo "Waiting for $name ($attempt/$HEALTHCHECK_RETRIES): $url"
+    attempt=$((attempt + 1))
+    sleep "$HEALTHCHECK_INTERVAL_SECONDS"
+  done
+
+  echo "$name is ready: $url"
+}
 
 cd "$APP_DIR"
 
@@ -51,8 +71,8 @@ else
   echo "nginx is not installed; skipped nginx config install."
 fi
 
-curl -fsS http://127.0.0.1:8080/api/communities >/dev/null
-curl -fsS http://127.0.0.1:3000 >/dev/null
+wait_for_url http://127.0.0.1:8080/api/communities gateway-service
+wait_for_url http://127.0.0.1:3000 frontend
 
 echo "memesee deployment finished for $DOMAIN"
 echo "If /api returns 500, inspect logs with:"

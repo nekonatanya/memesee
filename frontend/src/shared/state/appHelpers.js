@@ -328,12 +328,16 @@ export function normalizePostPayload(post, apiBase = "") {
   const mediaAssets = Array.isArray(safePost.mediaAssets)
     ? safePost.mediaAssets.map((asset) => {
         const safeAsset = asset && typeof asset === "object" ? asset : {};
+        const variants = Array.isArray(safeAsset.variants) ? safeAsset.variants : [];
+        const originalVariant = variants.find((variant) =>
+          String(variant?.kind || "").toLowerCase() === "original",
+        );
         const rawUrl = safeAsset.url || safeAsset.displayUrl || "";
         const displayUrl = normalizeAssetUrl(safeAsset.displayUrl || rawUrl, apiBase);
         const mediumUrl = normalizeAssetUrl(safeAsset.mediumUrl || displayUrl || rawUrl, apiBase);
         const smallUrl = normalizeAssetUrl(safeAsset.smallUrl || mediumUrl || displayUrl || rawUrl, apiBase);
         const thumbUrl = normalizeAssetUrl(safeAsset.thumbUrl || smallUrl || displayUrl || rawUrl, apiBase);
-        const originalUrl = normalizeAssetUrl(safeAsset.originalUrl || rawUrl || displayUrl, apiBase);
+        const originalUrl = normalizeAssetUrl(safeAsset.originalUrl || originalVariant?.url || "", apiBase);
         return {
           ...safeAsset,
           url: displayUrl || normalizeAssetUrl(rawUrl, apiBase),

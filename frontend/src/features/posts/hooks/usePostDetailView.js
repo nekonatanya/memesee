@@ -321,7 +321,7 @@ export function usePostDetailView({
     }
     return Array.isArray(selectedPost.mediaOriginalUrls) && selectedPost.mediaOriginalUrls.length > 0
       ? selectedPost.mediaOriginalUrls
-      : richDetailImages;
+      : [];
   }, [richDetailImages, selectedPost]);
   const richImageSources = useMemo(() => {
     if (!selectedPost || selectedPost.postMode !== "rich") {

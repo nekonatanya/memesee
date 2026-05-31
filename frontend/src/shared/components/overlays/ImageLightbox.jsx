@@ -77,8 +77,8 @@ export default function ImageLightbox({
   const currentImageSource = Array.isArray(imageSources) ? imageSources[index] || {} : {};
   const originalCandidateUrl = currentImageSource.originalUrl || safeOriginalImages[index] || "";
   const originalUrl = originalCandidateUrl || displayUrl;
-  const hasOriginalCandidate = Boolean(originalCandidateUrl);
   const hasDistinctOriginalUrl = Boolean(originalUrl && originalUrl !== displayUrl);
+  const hasOriginalCandidate = hasDistinctOriginalUrl;
   const currentUrl = useOriginal && hasOriginalCandidate ? originalUrl : displayUrl;
   const onCloseRef = useRef(onClose);
   const zoomInRef = useRef(() => {});

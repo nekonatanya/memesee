@@ -14,14 +14,21 @@ import { calculateHeatScore, normalizeAssetUrl } from "./contentApiShared";
 export function normalizeMediaAsset(apiBase, asset) {
   const safeAsset = asset && typeof asset === "object" ? asset : {};
   const assetId = Number(safeAsset.id || 0);
+  const rawVariants = Array.isArray(safeAsset.variants) ? safeAsset.variants : [];
+  const rawVariantUrl = (kind) => {
+    const match = rawVariants.find((variant) =>
+      String(variant?.kind || "").toLowerCase() === kind,
+    );
+    return match?.url || "";
+  };
   const rawUrl = safeAsset.url || safeAsset.displayUrl || "";
   const rawDisplayUrl = safeAsset.displayUrl || safeAsset.url || "";
   const rawMediumUrl = safeAsset.mediumUrl || rawDisplayUrl;
   const rawSmallUrl = safeAsset.smallUrl || rawMediumUrl;
   const rawThumbUrl = safeAsset.thumbUrl || rawDisplayUrl;
-  const rawOriginalUrl = safeAsset.originalUrl || rawDisplayUrl;
-  const variants = Array.isArray(safeAsset.variants)
-    ? safeAsset.variants.map((variant) => ({
+  const rawOriginalUrl = safeAsset.originalUrl || rawVariantUrl("original") || "";
+  const variants = rawVariants
+    .map((variant) => ({
         kind: String(variant?.kind || ""),
         url: normalizeAssetUrl(apiBase, variant?.url || ""),
         contentType: String(variant?.contentType || ""),
@@ -29,7 +36,7 @@ export function normalizeMediaAsset(apiBase, asset) {
         width: Number(variant?.width || 0),
         height: Number(variant?.height || 0),
       }))
-    : [];
+    .filter((variant) => variant.kind || variant.url);
   return {
     id: assetId,
     kind: String(safeAsset.kind || "IMAGE"),

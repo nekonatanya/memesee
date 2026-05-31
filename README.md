@@ -201,7 +201,7 @@ curl -X POST "http://localhost:8083/internal/media-assets/123/variants/retry" `
 INSERT INTO invite_codes
   (code, max_uses, used_count, disabled, expires_at, created_at, used_at, used_by)
 VALUES
-  ('DEV2026', 100, 0, false, NULL, UTC_TIMESTAMP(6), NULL, NULL);
+  ('MEMESEE', 100, 0, false, NULL, UTC_TIMESTAMP(6), NULL, NULL);
 ```
 
 然后前端注册时使用 `DEV2026`。

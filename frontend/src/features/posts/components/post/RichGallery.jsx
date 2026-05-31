@@ -35,10 +35,10 @@ export default function RichGallery({
   const originalImages = useMemo(
     () => (Array.isArray(richOriginalImages) && richOriginalImages.length > 0
       ? richOriginalImages
-      : imageSources.map((source) => source.originalUrl || source.displayUrl || source.src).filter(Boolean)),
+      : imageSources.map((source) => source.originalUrl).filter(Boolean)),
     [imageSources, richOriginalImages],
   );
-  const currentOriginalImage = originalImages[detailMediaIndex] || currentImage;
+  const currentOriginalImage = originalImages[detailMediaIndex] || "";
   const frameRef = useRef(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [naturalSizeMap, setNaturalSizeMap] = useState({});

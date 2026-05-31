@@ -86,7 +86,7 @@ export function buildResponsiveImageSource(asset, options = {}) {
     src,
     srcSet,
     sizes: options.sizes || "",
-    originalUrl: normalizeUrl(safeAsset.originalUrl) || displayUrl || src,
+    originalUrl: normalizeUrl(safeAsset.originalUrl) || variantUrl(safeAsset, "original"),
     displayUrl,
     thumbUrl: variantUrl(safeAsset, "thumb"),
     smallUrl: variantUrl(safeAsset, "small"),

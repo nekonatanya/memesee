@@ -113,7 +113,7 @@ export function useAppChrome({
       normalizedOriginalImages[imageIndex]
       || sourceOriginalImages[imageIndex]
       || (imageIndex === index && normalizedOriginalUrl ? normalizedOriginalUrl : "")
-      || image
+      || ""
     ));
     setImageViewer({ images, index, originalImages, imageSources: alignedImageSources });
   }
