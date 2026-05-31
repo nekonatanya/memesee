@@ -151,13 +151,14 @@ export function useDetailMarkdown({
         if (!normalized) {
           return null;
         }
+        const viewerImages = detailImageUrls
+          .map((url) => withMediaCacheVersion(url, mediaVersionSeed));
+        const startIndex = Math.max(0, viewerImages.indexOf(normalized));
         const originalUrl = toOriginalMediaUrl(normalized);
-        const originalGallery = detailImageUrls
-          .map((url) => withMediaCacheVersion(url, mediaVersionSeed))
+        const originalGallery = viewerImages
           .map(toOriginalMediaUrl);
         const imageSource = buildMarkdownImageSource(normalized);
-        const imageSources = detailImageUrls
-          .map((url) => withMediaCacheVersion(url, mediaVersionSeed))
+        const imageSources = viewerImages
           .map(buildMarkdownImageSource);
         const imageSizing = resolveMarkdownImageSizing({ alt, title });
         return (
@@ -165,7 +166,8 @@ export function useDetailMarkdown({
             type="button"
             className="markdown-image-trigger"
             style={imageSizing.containerStyle}
-            onClick={() => openImageViewer(normalized, detailImageUrls, {
+            onClick={() => openImageViewer(normalized, viewerImages, {
+              startIndex,
               originalUrl,
               originalImages: originalGallery,
               imageSources,

@@ -14,6 +14,12 @@ if [ ! -f ".env" ]; then
   exit 1
 fi
 
+if grep -Eq 'replace-with-|same-value-as' .env; then
+  echo ".env still contains placeholder values. Replace every replace-with-* value before deploying." >&2
+  grep -En 'replace-with-|same-value-as' .env >&2 || true
+  exit 1
+fi
+
 if [ "$SKIP_PULL" != "true" ]; then
   git pull --ff-only
 fi
@@ -49,3 +55,5 @@ curl -fsS http://127.0.0.1:8080/api/communities >/dev/null
 curl -fsS http://127.0.0.1:3000 >/dev/null
 
 echo "memesee deployment finished for $DOMAIN"
+echo "If /api returns 500, inspect logs with:"
+echo "  docker compose -f $COMPOSE_FILE logs --tail=200 gateway-service user-service content-service"

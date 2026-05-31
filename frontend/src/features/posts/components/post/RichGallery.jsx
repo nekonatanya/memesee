@@ -142,6 +142,7 @@ export default function RichGallery({
           className="post-rich-gallery-frame"
           onClick={() =>
             openImageViewer(currentImage, displayImages, {
+              startIndex: detailMediaIndex,
               originalUrl: currentOriginalImage,
               originalImages,
               imageSources,

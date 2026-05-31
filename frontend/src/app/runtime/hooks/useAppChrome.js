@@ -34,6 +34,58 @@ export function useAppChrome({
       : normalizedImages.filter(Boolean);
   }
 
+  function comparableImageKey(value) {
+    const normalized = normalizeAssetUrl(value || "", apiBase);
+    if (!normalized) {
+      return "";
+    }
+    try {
+      const parsed = new URL(normalized, window.location.origin);
+      parsed.hash = "";
+      parsed.searchParams.delete("v");
+      const origin = parsed.origin === window.location.origin ? "" : parsed.origin;
+      const search = parsed.searchParams.toString();
+      return `${origin}${parsed.pathname}${search ? `?${search}` : ""}`;
+    } catch {
+      return normalized
+        .replace(/#.*$/, "")
+        .replace(/([?&])v=[^&]*&?/i, "$1")
+        .replace(/[?&]$/, "");
+    }
+  }
+
+  function resolveImageViewerIndex(images, targetUrl, preferredIndex) {
+    const indexCandidate = Number(preferredIndex);
+    if (
+      Number.isInteger(indexCandidate) &&
+      indexCandidate >= 0 &&
+      indexCandidate < images.length
+    ) {
+      return indexCandidate;
+    }
+    const exactIndex = images.indexOf(targetUrl);
+    if (exactIndex >= 0) {
+      return exactIndex;
+    }
+    const targetKey = comparableImageKey(targetUrl);
+    const comparableIndex = images.findIndex((image) => comparableImageKey(image) === targetKey);
+    return comparableIndex >= 0 ? comparableIndex : 0;
+  }
+
+  function alignImageSources(images, imageSources) {
+    if (!Array.isArray(imageSources) || imageSources.length === 0) {
+      return [];
+    }
+    return images.map((image, imageIndex) => {
+      const imageKey = comparableImageKey(image);
+      return imageSources.find((source) =>
+        [source?.src, source?.displayUrl, source?.originalUrl]
+          .filter(Boolean)
+          .some((sourceUrl) => comparableImageKey(sourceUrl) === imageKey),
+      ) || imageSources[imageIndex] || {};
+    });
+  }
+
   function openImageViewer(url, sourceImages = [], options = {}) {
     const normalized = normalizeAssetUrl(url || "", apiBase);
     if (!normalized) {
@@ -52,17 +104,18 @@ export function useAppChrome({
       .map((source) => source.src || source.displayUrl)
       .filter(Boolean);
     const images = gallery.length > 0 ? gallery : (sourceGallery.length > 0 ? sourceGallery : [normalized]);
-    const index = Math.max(0, images.indexOf(normalized));
+    const index = resolveImageViewerIndex(images, normalized, options.startIndex);
+    const alignedImageSources = alignImageSources(images, imageSources);
     const normalizedOriginalImages = normalizeImageList(options.originalImages, { keepEmpty: true });
     const normalizedOriginalUrl = normalizeAssetUrl(options.originalUrl || "", apiBase);
-    const sourceOriginalImages = imageSources.map((source) => source.originalUrl || "");
+    const sourceOriginalImages = alignedImageSources.map((source) => source.originalUrl || "");
     const originalImages = images.map((image, imageIndex) => (
       normalizedOriginalImages[imageIndex]
       || sourceOriginalImages[imageIndex]
       || (imageIndex === index && normalizedOriginalUrl ? normalizedOriginalUrl : "")
       || image
     ));
-    setImageViewer({ images, index, originalImages, imageSources });
+    setImageViewer({ images, index, originalImages, imageSources: alignedImageSources });
   }
 
   function closeImageViewer() {

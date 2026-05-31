@@ -133,8 +133,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       USER_DB_URL: jdbc:mysql://mysql:3306/memesee_user?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      USER_DB_USERNAME: ${USER_DB_USERNAME:-memesee_app}
-      USER_DB_PASSWORD: ${USER_DB_PASSWORD:?set USER_DB_PASSWORD in .env}
+      USER_DB_USERNAME: ${MYSQL_APP_USERNAME:-memesee_app}
+      USER_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set MYSQL_APP_PASSWORD in .env}
       SPRING_DATA_REDIS_HOST: redis
       SPRING_DATA_REDIS_PORT: 6379
       SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
@@ -168,8 +168,8 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       CONTENT_DB_URL: jdbc:mysql://mysql:3306/memesee_content?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      CONTENT_DB_USERNAME: ${CONTENT_DB_USERNAME:-memesee_app}
-      CONTENT_DB_PASSWORD: ${CONTENT_DB_PASSWORD:?set CONTENT_DB_PASSWORD in .env}
+      CONTENT_DB_USERNAME: ${MYSQL_APP_USERNAME:-memesee_app}
+      CONTENT_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set MYSQL_APP_PASSWORD in .env}
       MEMESEE_REDIS_HOST: redis
       MEMESEE_REDIS_PORT: 6379
       MEMESEE_REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}
