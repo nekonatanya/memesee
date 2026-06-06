@@ -59,6 +59,7 @@ public class MainPostViewerInteractionResolver {
                         item.communityName(),
                         item.title(),
                         item.contentPreview(),
+                        item.postMode(),
                         item.authorUsername(),
                         item.createdAt(),
                         item.updatedAt(),

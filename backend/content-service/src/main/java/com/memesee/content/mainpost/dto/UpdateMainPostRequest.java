@@ -1,6 +1,7 @@
 package com.memesee.content.mainpost.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.util.List;
 
@@ -10,6 +11,8 @@ public record UpdateMainPostRequest(
         String title,
         @Size(max = 5000)
         String content,
+        @Pattern(regexp = "^(long|rich)$", message = "postMode must be long or rich.")
+        String postMode,
         @Size(max = 20)
         List<Long> mediaAssetIds,
         List<String> tags

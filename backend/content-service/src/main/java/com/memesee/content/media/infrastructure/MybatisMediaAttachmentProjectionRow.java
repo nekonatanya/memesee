@@ -4,11 +4,15 @@ public class MybatisMediaAttachmentProjectionRow {
 
     private Long ownerId;
     private Long assetId;
+    private String publicId;
     private String kind;
+    private String bucketName;
+    private String objectKey;
     private String contentType;
     private String originalFilename;
     private Long sizeBytes;
     private String processingStatus;
+    private String blurDataUrl;
 
     public Long getOwnerId() {
         return ownerId;
@@ -26,6 +30,14 @@ public class MybatisMediaAttachmentProjectionRow {
         this.assetId = assetId;
     }
 
+    public String getPublicId() {
+        return publicId;
+    }
+
+    public void setPublicId(String publicId) {
+        this.publicId = publicId;
+    }
+
     public String getKind() {
         return kind;
     }
@@ -40,6 +52,22 @@ public class MybatisMediaAttachmentProjectionRow {
 
     public void setContentType(String contentType) {
         this.contentType = contentType;
+    }
+
+    public String getBucketName() {
+        return bucketName;
+    }
+
+    public void setBucketName(String bucketName) {
+        this.bucketName = bucketName;
+    }
+
+    public String getObjectKey() {
+        return objectKey;
+    }
+
+    public void setObjectKey(String objectKey) {
+        this.objectKey = objectKey;
     }
 
     public String getOriginalFilename() {
@@ -64,5 +92,13 @@ public class MybatisMediaAttachmentProjectionRow {
 
     public void setProcessingStatus(String processingStatus) {
         this.processingStatus = processingStatus;
+    }
+
+    public String getBlurDataUrl() {
+        return blurDataUrl;
+    }
+
+    public void setBlurDataUrl(String blurDataUrl) {
+        this.blurDataUrl = blurDataUrl;
     }
 }

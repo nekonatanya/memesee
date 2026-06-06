@@ -93,12 +93,16 @@ public class MybatisMediaAssetMetadataProjectionPort implements MediaAssetMetada
     private MediaAssetMetadataProjection toProjection(MybatisMediaAssetMetadataProjectionRow row) {
         return new MediaAssetMetadataProjection(
                 row.getAssetId(),
+                row.getPublicId(),
                 row.getOwnerUsername(),
                 toKind(row.getKind()),
+                row.getBucketName(),
+                row.getObjectKey(),
                 row.getOriginalFilename(),
                 row.getContentType(),
                 safeLong(row.getSizeBytes()),
-                row.getProcessingStatus()
+                row.getProcessingStatus(),
+                row.getBlurDataUrl()
         );
     }
 

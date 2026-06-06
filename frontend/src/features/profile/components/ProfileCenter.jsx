@@ -2,6 +2,7 @@ import ProfileCommunityPosts from "./ProfileCommunityPosts";
 import ProfileLibraryPage from "./ProfileLibraryPage";
 import ProfileNotificationPage from "./ProfileNotificationPage";
 import ProfileOverview from "./ProfileOverview";
+import { StatusCard } from "../../../shared/components/PageShell";
 
 export default function ProfileCenter({
   statusProps,
@@ -15,25 +16,27 @@ export default function ProfileCenter({
   return (
     <section className="feed-grid">
       {loadingProfile && (
-        <article className="feed-status-card">
-          <span className="feed-status-kicker">个人中心</span>
-          <strong>个人中心加载中</strong>
-          <span className="feed-status-subtext">正在整理你的主页、通知和收藏。</span>
+        <StatusCard
+          kicker="个人中心"
+          title="正在打开个人中心"
+          description="你的主页、通知和收藏马上就好。"
+          tone="loading"
+          role="status"
+          ariaLive="polite"
+        >
           <span className="feed-status-dots" aria-hidden="true">
             <i />
             <i />
             <i />
           </span>
-        </article>
+        </StatusCard>
       )}
       {!loadingProfile && !isLoggedIn && (
-        <article className="feed-status-card feed-status-card-empty">
-          <div className="feed-status-mainline">
-            <span className="feed-status-mark" aria-hidden="true" />
-            <strong>请先登录后查看个人中心</strong>
-          </div>
-          <span className="feed-status-subtext">登录后可以查看通知、收藏、点赞和发布记录。</span>
-        </article>
+        <StatusCard
+          title="请先登录后查看个人中心"
+          description="登录后可以查看通知、收藏、点赞和发布记录。"
+          tone="empty"
+        />
       )}
       {!loadingProfile && isLoggedIn && profile && (
         <article className="profile-center-card profile-paper">
@@ -57,13 +60,11 @@ export default function ProfileCenter({
         </article>
       )}
       {!loadingProfile && isLoggedIn && !profile && (
-        <article className="feed-status-card feed-status-card-empty">
-          <div className="feed-status-mainline">
-            <span className="feed-status-mark" aria-hidden="true" />
-            <strong>个人资料暂时不可用</strong>
-          </div>
-          <span className="feed-status-subtext">可以稍后刷新页面再试一次。</span>
-        </article>
+        <StatusCard
+          title="个人资料暂时不可用"
+          description="可以稍后刷新页面再试一次。"
+          tone="empty"
+        />
       )}
     </section>
   );

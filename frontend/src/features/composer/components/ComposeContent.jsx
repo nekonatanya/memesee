@@ -1,13 +1,24 @@
 import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
+import { normalizeAssetUrl } from "../../../shared/media/mediaAssetHelpers";
 import {
-  extractImageUrls,
-  normalizeAssetUrl,
+  removeExternalMarkdownImages,
   removeMarkdownImages,
-} from "../../../shared/state/appHelpers";
-import { resolveMarkdownImageSizing } from "../../../shared/state/markdownImageSizing";
+} from "../../../shared/media/markdownContent";
+import MarkdownMediaImage from "../../../shared/media/MarkdownMediaImage";
+import {
+  buildMarkdownImageGallery,
+  buildMarkdownMediaAssetMap,
+  resolveMarkdownImageData,
+} from "../../../shared/media/markdownImages";
+
+function keepMarkdownUrl(value) {
+  return String(value || "").trim().startsWith("media:")
+    ? value
+    : defaultUrlTransform(value);
+}
 
 export default function ComposeContent({
   composerMode,
@@ -16,16 +27,26 @@ export default function ComposeContent({
   handleComposerContentChange,
   composerContentRef,
   closeComposerTagEditor,
+  composerMediaAssets,
   openImageViewer,
 }) {
   const isPreviewing = viewMode === "preview";
   const markdownPreviewContent = useMemo(
-    () => (composerMode === "rich" ? removeMarkdownImages(content) : String(content || "")),
+    () => composerMode === "long"
+      ? removeExternalMarkdownImages(content)
+      : removeMarkdownImages(content),
     [composerMode, content],
   );
-  const previewImageUrls = useMemo(
-    () => (composerMode === "long" ? extractImageUrls(content || "") : []),
-    [composerMode, content],
+  const mediaAssetMap = useMemo(
+    () => buildMarkdownMediaAssetMap(composerMediaAssets),
+    [composerMediaAssets],
+  );
+  const markdownImageGallery = useMemo(
+    () => buildMarkdownImageGallery({
+      content: markdownPreviewContent,
+      mediaAssetMap,
+    }),
+    [markdownPreviewContent, mediaAssetMap],
   );
   const markdownComponents = useMemo(
     () => ({
@@ -37,36 +58,30 @@ export default function ComposeContent({
           </a>
         );
       },
-      img: ({ src, alt, title }) => {
-        if (composerMode === "rich") {
+      img: ({ src, alt }) => {
+        const imageData = resolveMarkdownImageData({
+          src,
+          alt,
+          mediaAssetMap,
+        });
+        if (!imageData) {
           return null;
         }
-        const normalized = normalizeAssetUrl(src || "");
-        if (!normalized) {
-          return null;
-        }
-        const imageSizing = resolveMarkdownImageSizing({ alt, title });
+        const viewerImages = markdownImageGallery.map((entry) => entry.imageUrl);
+        const viewerOriginalImages = markdownImageGallery.map((entry) => entry.originalUrl);
+        const viewerImageSources = markdownImageGallery.map((entry) => entry.imageSource);
         return (
-          <button
-            type="button"
-            className="markdown-image-trigger"
-            style={imageSizing.containerStyle}
-            onClick={() => openImageViewer?.(normalized, previewImageUrls)}
-          >
-            <span className="markdown-image-frame" style={imageSizing.frameStyle}>
-              <img
-                src={normalized}
-                alt={imageSizing.alt || "image"}
-                className="markdown-inline-image"
-                style={imageSizing.imageStyle}
-                loading="lazy"
-              />
-            </span>
-          </button>
+          <MarkdownMediaImage
+            {...imageData}
+            openImageViewer={openImageViewer}
+            viewerImages={viewerImages}
+            viewerOriginalImages={viewerOriginalImages}
+            viewerImageSources={viewerImageSources}
+          />
         );
       },
     }),
-    [composerMode, openImageViewer, previewImageUrls],
+    [markdownImageGallery, mediaAssetMap, openImageViewer],
   );
 
   return (
@@ -93,6 +108,7 @@ export default function ComposeContent({
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkBreaks]}
               components={markdownComponents}
+              urlTransform={keepMarkdownUrl}
             >
               {markdownPreviewContent}
             </ReactMarkdown>

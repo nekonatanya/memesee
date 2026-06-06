@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { listFeedPosts as listContentFeedPosts } from "../../content/api/contentApi";
-import { mergePostPages } from "../../../shared/state/appHelpers";
+import { mergeFeedSnapshotWithKnownState, mergePostPages } from "../../posts/state/mainPostStateHelpers";
 import { normalizeFeedPage, shouldSkipFeedAppend } from "../state/feedViewHelpers";
 import { UI_MESSAGES, readableError } from "../../../shared/state/uiMessages";
 
@@ -112,7 +112,9 @@ export function useFeedPagination({
       setFeedCursor(normalizedPage.nextCursor);
       setFeedHasMore(normalizedPage.hasMore);
       setPosts((prev) =>
-        append ? mergePostPages(prev, normalizedPage.posts) : normalizedPage.posts,
+        append
+          ? mergePostPages(prev, normalizedPage.posts)
+          : mergeFeedSnapshotWithKnownState(prev, normalizedPage.posts),
       );
     } catch (error) {
       if (requestId === feedRequestSeqRef.current) {

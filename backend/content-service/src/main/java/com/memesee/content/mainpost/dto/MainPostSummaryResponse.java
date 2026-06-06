@@ -11,6 +11,7 @@ public record MainPostSummaryResponse(
         String communityName,
         String title,
         String contentPreview,
+        String postMode,
         String authorUsername,
         Instant createdAt,
         Instant updatedAt,

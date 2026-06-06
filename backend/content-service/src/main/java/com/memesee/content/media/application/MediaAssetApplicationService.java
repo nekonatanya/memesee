@@ -33,7 +33,6 @@ import com.memesee.content.media.infrastructure.SubPostMediaCache;
 import com.memesee.content.subpost.domain.SubPost;
 import com.memesee.platform.cache.PlatformAsyncRefreshCoordinator;
 import com.memesee.platform.cache.PlatformSingleFlight;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -43,10 +42,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.io.IOException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.TransactionDefinition;
@@ -73,7 +72,6 @@ public class MediaAssetApplicationService
     private final MediaAttachmentProjectionPort mediaAttachmentProjectionPort;
     private final MinioMediaStorageService minioMediaStorageService;
     private final MediaAssetVariantRepository mediaAssetVariantRepository;
-    private final MediaImageProcessor mediaImageProcessor;
     private final AuthContextResolver authContextResolver;
     private final MediaAssetMetadataCache mediaAssetMetadataCache;
     private final MainPostMediaCache mainPostMediaCache;
@@ -97,7 +95,6 @@ public class MediaAssetApplicationService
             MediaAttachmentProjectionPort mediaAttachmentProjectionPort,
             MinioMediaStorageService minioMediaStorageService,
             MediaAssetVariantRepository mediaAssetVariantRepository,
-            MediaImageProcessor mediaImageProcessor,
             AuthContextResolver authContextResolver,
             MediaAssetMetadataCache mediaAssetMetadataCache,
             MainPostMediaCache mainPostMediaCache,
@@ -116,7 +113,6 @@ public class MediaAssetApplicationService
                 mediaAttachmentProjectionPort,
                 minioMediaStorageService,
                 mediaAssetVariantRepository,
-                mediaImageProcessor,
                 authContextResolver,
                 mediaAssetMetadataCache,
                 mainPostMediaCache,
@@ -138,7 +134,6 @@ public class MediaAssetApplicationService
             MediaAttachmentProjectionPort mediaAttachmentProjectionPort,
             MinioMediaStorageService minioMediaStorageService,
             MediaAssetVariantRepository mediaAssetVariantRepository,
-            MediaImageProcessor mediaImageProcessor,
             AuthContextResolver authContextResolver,
             MediaAssetMetadataCache mediaAssetMetadataCache,
             MainPostMediaCache mainPostMediaCache,
@@ -157,7 +152,6 @@ public class MediaAssetApplicationService
         this.mediaAttachmentProjectionPort = mediaAttachmentProjectionPort;
         this.minioMediaStorageService = minioMediaStorageService;
         this.mediaAssetVariantRepository = mediaAssetVariantRepository;
-        this.mediaImageProcessor = mediaImageProcessor;
         this.authContextResolver = authContextResolver;
         this.mediaAssetMetadataCache = mediaAssetMetadataCache;
         this.mainPostMediaCache = mainPostMediaCache;
@@ -174,18 +168,19 @@ public class MediaAssetApplicationService
     @Transactional
     public MediaAssetResponse uploadImage(String authorizationHeader, MultipartFile file) {
         AuthContext authContext = authContextResolver.resolveRequired(authorizationHeader);
-        MediaImageProcessor.ProcessedImageSet processedImages = null;
-        MediaImageProcessor.ProcessedImage originalImage;
-        if (mediaVariantProcessingPublisher.isPresent()) {
-            originalImage = mediaImageProcessor.readOriginalImage(file);
-        } else {
-            processedImages = mediaImageProcessor.process(file);
-            originalImage = processedImages.require(MediaAssetVariantKind.ORIGINAL);
+        if (file == null || file.isEmpty()) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST, "请选择要上传的图片。");
+        }
+        byte[] originalBytes;
+        try {
+            originalBytes = file.getBytes();
+        } catch (IOException ex) {
+            throw new ApiException(HttpStatus.BAD_REQUEST, ApiErrorCode.INVALID_REQUEST, "图片读取失败。", ex);
         }
         MinioMediaStorageService.StoredMediaObject storedMediaObject = minioMediaStorageService.storeImageBytes(
-                originalImage.bytes(),
-                originalImage.filename(),
-                originalImage.contentType()
+                originalBytes,
+                file.getOriginalFilename(),
+                file.getContentType()
         );
         MediaAsset asset = mediaAssetRepository.save(new MediaAsset(
                 authContext.username(),
@@ -196,20 +191,9 @@ public class MediaAssetApplicationService
                 storedMediaObject.contentType(),
                 storedMediaObject.sizeBytes(),
                 MediaAssetStatus.ACTIVE,
-                mediaVariantProcessingPublisher.isPresent()
-                        ? MediaAssetProcessingStatus.PROCESSING
-                        : MediaAssetProcessingStatus.READY
+                MediaAssetProcessingStatus.PROCESSING
         ));
-        if (processedImages == null) {
-            saveImageVariants(
-                    asset.getId(),
-                    new MediaImageProcessor.ProcessedImageSet(List.of(originalImage)),
-                    storedMediaObject
-            );
-            publishVariantProcessingOrFallback(asset.getId());
-        } else {
-            saveImageVariants(asset.getId(), processedImages, storedMediaObject);
-        }
+        publishVariantProcessing(asset.getId());
         MediaAssetResponse response = toResponse(asset);
         mediaAssetMetadataCache.putMediaAsset(response);
         return response;
@@ -233,58 +217,6 @@ public class MediaAssetApplicationService
         );
     }
 
-    @Transactional(readOnly = true)
-    public LoadedMediaAsset loadMediaBinary(Long assetId, MediaAssetVariantKind variantKind) {
-        getMediaAsset(assetId);
-        MediaAssetVariantKind resolvedKind = variantKind == null ? MediaAssetVariantKind.DISPLAY : variantKind;
-        List<MediaAssetVariant> variants = mediaAssetVariantRepository.findAllByMediaAssetIdIn(List.of(assetId));
-        MediaAssetVariant variant = resolveBestVariant(variants, resolvedKind)
-                .orElseThrow(this::mediaAssetNotFound);
-        Resource resource = minioMediaStorageService.load(
-                variant.getBucketName(),
-                variant.getObjectKey()
-        );
-        return new LoadedMediaAsset(
-                variant.getContentType(),
-                variant.getSizeBytes(),
-                variant.getCreatedAt(),
-                buildMediaVariantVersion(variant),
-                resource
-        );
-    }
-
-    @Transactional
-    public void processMissingImageVariants(Long assetId) {
-        if (assetId == null || assetId <= 0L) {
-            return;
-        }
-        MediaAsset asset = mediaAssetRepository.findById(assetId).orElseThrow(this::mediaAssetNotFound);
-        if (!asset.isActive() || asset.getKind() != MediaAssetKind.IMAGE) {
-            return;
-        }
-        byte[] originalBytes = minioMediaStorageService.loadBytes(asset.getBucketName(), asset.getObjectKey());
-        MediaImageProcessor.ProcessedImageSet processedImages = mediaImageProcessor.processOriginalBytes(
-                originalBytes,
-                asset.getOriginalFilename(),
-                asset.getContentType()
-        );
-        saveImageVariants(
-                asset.getId(),
-                processedImages,
-                new MinioMediaStorageService.StoredMediaObject(
-                        asset.getBucketName(),
-                        asset.getObjectKey(),
-                        asset.getOriginalFilename(),
-                        asset.getContentType(),
-                        asset.getSizeBytes()
-                )
-        );
-        asset.markReady();
-        mediaAssetMetadataCache.putMediaAsset(toResponse(asset));
-        evictLinkedMediaCaches(assetId);
-        refreshLinkedMainPostFeedMediaAfterCommit(assetId);
-    }
-
     @Transactional
     public void retryMediaVariantProcessing(Long assetId) {
         if (assetId == null || assetId <= 0L) {
@@ -294,7 +226,7 @@ public class MediaAssetApplicationService
                 .orElseThrow(this::mediaAssetNotFound);
         asset.markProcessing();
         mediaAssetMetadataCache.evictMediaAsset(assetId);
-        publishVariantProcessingOrFallback(assetId);
+        publishVariantProcessing(assetId);
     }
 
     @Transactional
@@ -311,28 +243,9 @@ public class MediaAssetApplicationService
         failedAssets.forEach(asset -> {
             asset.markProcessing();
             mediaAssetMetadataCache.evictMediaAsset(asset.getId());
-            publishVariantProcessingOrFallback(asset.getId());
+            publishVariantProcessing(asset.getId());
         });
         return failedAssets.stream().map(MediaAsset::getId).toList();
-    }
-
-    @Transactional
-    public void markMediaVariantProcessingFailed(Long assetId) {
-        if (assetId == null || assetId <= 0L) {
-            return;
-        }
-        mediaAssetRepository.findByIdAndStatus(assetId, MediaAssetStatus.ACTIVE)
-                .ifPresent(asset -> {
-                    asset.markFailed();
-                    mediaAssetMetadataCache.evictMediaAsset(assetId);
-                    evictLinkedMediaCaches(assetId);
-                    refreshLinkedMainPostFeedMediaAfterCommit(assetId);
-                });
-    }
-
-    @Transactional(readOnly = true)
-    public LoadedMediaAsset loadMediaBinary(Long assetId) {
-        return loadMediaBinary(assetId, MediaAssetVariantKind.DISPLAY);
     }
 
     @Transactional
@@ -659,13 +572,15 @@ public class MediaAssetApplicationService
         MediaAssetVariantResponse small = findVariantResponse(variants, MediaAssetVariantKind.SMALL);
         MediaAssetVariantResponse thumb = findVariantResponse(variants, MediaAssetVariantKind.THUMB);
         MediaAssetVariantResponse original = findVariantResponse(variants, MediaAssetVariantKind.ORIGINAL);
-        String displayUrl = variantResponseUrlOrDefault(asset.getId(), display, MediaAssetVariantKind.DISPLAY);
-        String mediumUrl = variantResponseUrlOrDefault(asset.getId(), medium, MediaAssetVariantKind.MEDIUM);
-        String smallUrl = variantResponseUrlOrDefault(asset.getId(), small, MediaAssetVariantKind.SMALL);
-        String thumbUrl = variantResponseUrlOrDefault(asset.getId(), thumb, MediaAssetVariantKind.THUMB);
-        String originalUrl = variantResponseUrlOrDefault(asset.getId(), original, MediaAssetVariantKind.ORIGINAL);
+        String fallbackOriginalUrl = minioMediaStorageService.buildPublicUrl(asset.getBucketName(), asset.getObjectKey());
+        String originalUrl = variantResponseUrlOrDefault(original, fallbackOriginalUrl);
+        String displayUrl = variantResponseUrlOrDefault(display, originalUrl);
+        String mediumUrl = variantResponseUrlOrDefault(medium, displayUrl);
+        String smallUrl = variantResponseUrlOrDefault(small, mediumUrl);
+        String thumbUrl = variantResponseUrlOrDefault(thumb, smallUrl);
         return new MediaAssetResponse(
                 asset.getId(),
+                asset.getPublicId(),
                 asset.getKind().name(),
                 displayUrl,
                 thumbUrl,
@@ -679,6 +594,7 @@ public class MediaAssetApplicationService
                 original != null ? original.width() : 0,
                 original != null ? original.height() : 0,
                 asset.getProcessingStatus().name(),
+                asset.getBlurDataUrl(),
                 variants
         );
     }
@@ -690,13 +606,18 @@ public class MediaAssetApplicationService
         MediaAssetVariantResponse small = findVariantResponse(variants, MediaAssetVariantKind.SMALL);
         MediaAssetVariantResponse thumb = findVariantResponse(variants, MediaAssetVariantKind.THUMB);
         MediaAssetVariantResponse original = findVariantResponse(variants, MediaAssetVariantKind.ORIGINAL);
-        String displayUrl = variantResponseUrlOrDefault(projection.assetId(), display, MediaAssetVariantKind.DISPLAY);
-        String mediumUrl = variantResponseUrlOrDefault(projection.assetId(), medium, MediaAssetVariantKind.MEDIUM);
-        String smallUrl = variantResponseUrlOrDefault(projection.assetId(), small, MediaAssetVariantKind.SMALL);
-        String thumbUrl = variantResponseUrlOrDefault(projection.assetId(), thumb, MediaAssetVariantKind.THUMB);
-        String originalUrl = variantResponseUrlOrDefault(projection.assetId(), original, MediaAssetVariantKind.ORIGINAL);
+        String fallbackOriginalUrl = minioMediaStorageService.buildPublicUrl(
+                projection.bucketName(),
+                projection.objectKey()
+        );
+        String originalUrl = variantResponseUrlOrDefault(original, fallbackOriginalUrl);
+        String displayUrl = variantResponseUrlOrDefault(display, originalUrl);
+        String mediumUrl = variantResponseUrlOrDefault(medium, displayUrl);
+        String smallUrl = variantResponseUrlOrDefault(small, mediumUrl);
+        String thumbUrl = variantResponseUrlOrDefault(thumb, smallUrl);
         return new MediaAssetResponse(
                 projection.assetId(),
+                projection.publicId(),
                 projection.kind().name(),
                 displayUrl,
                 thumbUrl,
@@ -710,6 +631,7 @@ public class MediaAssetApplicationService
                 original != null ? original.width() : 0,
                 original != null ? original.height() : 0,
                 normalizeProcessingStatus(projection.processingStatus()),
+                projection.blurDataUrl(),
                 variants
         );
     }
@@ -721,13 +643,18 @@ public class MediaAssetApplicationService
         MediaAssetVariantResponse small = findVariantResponse(variants, MediaAssetVariantKind.SMALL);
         MediaAssetVariantResponse thumb = findVariantResponse(variants, MediaAssetVariantKind.THUMB);
         MediaAssetVariantResponse original = findVariantResponse(variants, MediaAssetVariantKind.ORIGINAL);
-        String displayUrl = variantResponseUrlOrDefault(projection.assetId(), display, MediaAssetVariantKind.DISPLAY);
-        String mediumUrl = variantResponseUrlOrDefault(projection.assetId(), medium, MediaAssetVariantKind.MEDIUM);
-        String smallUrl = variantResponseUrlOrDefault(projection.assetId(), small, MediaAssetVariantKind.SMALL);
-        String thumbUrl = variantResponseUrlOrDefault(projection.assetId(), thumb, MediaAssetVariantKind.THUMB);
-        String originalUrl = variantResponseUrlOrDefault(projection.assetId(), original, MediaAssetVariantKind.ORIGINAL);
+        String fallbackOriginalUrl = minioMediaStorageService.buildPublicUrl(
+                projection.bucketName(),
+                projection.objectKey()
+        );
+        String originalUrl = variantResponseUrlOrDefault(original, fallbackOriginalUrl);
+        String displayUrl = variantResponseUrlOrDefault(display, originalUrl);
+        String mediumUrl = variantResponseUrlOrDefault(medium, displayUrl);
+        String smallUrl = variantResponseUrlOrDefault(small, mediumUrl);
+        String thumbUrl = variantResponseUrlOrDefault(thumb, smallUrl);
         return new MediaAssetResponse(
                 projection.assetId(),
+                projection.publicId(),
                 projection.kind(),
                 displayUrl,
                 thumbUrl,
@@ -741,6 +668,7 @@ public class MediaAssetApplicationService
                 original != null ? original.width() : 0,
                 original != null ? original.height() : 0,
                 normalizeProcessingStatus(projection.processingStatus()),
+                projection.blurDataUrl(),
                 variants
         );
     }
@@ -750,43 +678,6 @@ public class MediaAssetApplicationService
             return MediaAssetProcessingStatus.READY.name();
         }
         return processingStatus.trim().toUpperCase(java.util.Locale.ROOT);
-    }
-
-    private void saveImageVariants(
-            Long mediaAssetId,
-            MediaImageProcessor.ProcessedImageSet processedImages,
-            MinioMediaStorageService.StoredMediaObject originalStoredMediaObject
-    ) {
-        Set<MediaAssetVariantKind> existingKinds = mediaAssetVariantRepository
-                .findAllByMediaAssetIdIn(List.of(mediaAssetId))
-                .stream()
-                .map(MediaAssetVariant::getKind)
-                .collect(java.util.stream.Collectors.toSet());
-        List<MediaAssetVariant> variants = processedImages.images().stream()
-                .filter(image -> !existingKinds.contains(image.kind()))
-                .map(image -> {
-                    MinioMediaStorageService.StoredMediaObject stored = image.kind() == MediaAssetVariantKind.ORIGINAL
-                            ? originalStoredMediaObject
-                            : minioMediaStorageService.storeImageBytes(
-                                    image.bytes(),
-                                    image.filename(),
-                                    image.contentType()
-                            );
-                    return new MediaAssetVariant(
-                            mediaAssetId,
-                            image.kind(),
-                            stored.bucketName(),
-                            stored.objectKey(),
-                            stored.contentType(),
-                            stored.sizeBytes(),
-                            image.width(),
-                            image.height()
-                    );
-                })
-                .toList();
-        if (!variants.isEmpty()) {
-            mediaAssetVariantRepository.saveAll(variants);
-        }
     }
 
     private List<MediaAssetVariantResponse> loadVariantResponses(Long mediaAssetId) {
@@ -819,57 +710,11 @@ public class MediaAssetApplicationService
                 .orElse(null);
     }
 
-    private String variantResponseUrlOrDefault(
-            Long mediaAssetId,
-            MediaAssetVariantResponse variant,
-            MediaAssetVariantKind kind
-    ) {
+    private String variantResponseUrlOrDefault(MediaAssetVariantResponse variant, String fallbackUrl) {
         if (variant != null && variant.url() != null && !variant.url().isBlank()) {
             return variant.url();
         }
-        return mediaVariantUrl(mediaAssetId, kind);
-    }
-
-    private Optional<MediaAssetVariant> resolveBestVariant(
-            List<MediaAssetVariant> variants,
-            MediaAssetVariantKind requestedKind
-    ) {
-        if (variants == null || variants.isEmpty()) {
-            return Optional.empty();
-        }
-        List<MediaAssetVariantKind> fallbackOrder = switch (requestedKind) {
-            case THUMB -> List.of(MediaAssetVariantKind.THUMB, MediaAssetVariantKind.SMALL,
-                    MediaAssetVariantKind.MEDIUM, MediaAssetVariantKind.DISPLAY, MediaAssetVariantKind.ORIGINAL);
-            case SMALL -> List.of(MediaAssetVariantKind.SMALL, MediaAssetVariantKind.MEDIUM,
-                    MediaAssetVariantKind.DISPLAY, MediaAssetVariantKind.THUMB, MediaAssetVariantKind.ORIGINAL);
-            case MEDIUM -> List.of(MediaAssetVariantKind.MEDIUM, MediaAssetVariantKind.DISPLAY,
-                    MediaAssetVariantKind.SMALL, MediaAssetVariantKind.THUMB, MediaAssetVariantKind.ORIGINAL);
-            case DISPLAY -> List.of(MediaAssetVariantKind.DISPLAY, MediaAssetVariantKind.MEDIUM,
-                    MediaAssetVariantKind.SMALL, MediaAssetVariantKind.THUMB, MediaAssetVariantKind.ORIGINAL);
-            case ORIGINAL -> List.of(MediaAssetVariantKind.ORIGINAL, MediaAssetVariantKind.DISPLAY,
-                    MediaAssetVariantKind.MEDIUM, MediaAssetVariantKind.SMALL, MediaAssetVariantKind.THUMB);
-        };
-        for (MediaAssetVariantKind kind : fallbackOrder) {
-            Optional<MediaAssetVariant> match = variants.stream()
-                    .filter(variant -> variant.getKind() == kind)
-                    .findFirst();
-            if (match.isPresent()) {
-                return match;
-            }
-        }
-        return Optional.empty();
-    }
-
-    private String mediaVariantUrl(Long mediaAssetId, MediaAssetVariantKind kind) {
-        return "/api/media-assets/" + mediaAssetId + "/binary?variant=" + kind.name().toLowerCase(java.util.Locale.ROOT);
-    }
-
-    private String mediaVariantUrl(Long mediaAssetId, MediaAssetVariantKind kind, String version) {
-        String baseUrl = mediaVariantUrl(mediaAssetId, kind);
-        if (version == null || version.isBlank()) {
-            return baseUrl;
-        }
-        return baseUrl + "&v=" + version;
+        return fallbackUrl == null ? "" : fallbackUrl;
     }
 
     private String mediaVariantUrl(MediaAssetVariant variant) {
@@ -878,7 +723,7 @@ public class MediaAssetApplicationService
         if (publicUrl != null && !publicUrl.isBlank()) {
             return version == null || version.isBlank() ? publicUrl : publicUrl + "?v=" + version;
         }
-        return mediaVariantUrl(variant.getMediaAssetId(), variant.getKind(), version);
+        return "";
     }
 
     private String buildMediaVariantVersion(MediaAssetVariant variant) {
@@ -912,14 +757,13 @@ public class MediaAssetApplicationService
         return cacheName + ":" + ids.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","));
     }
 
-    private void publishVariantProcessingOrFallback(Long assetId) {
+    private void publishVariantProcessing(Long assetId) {
         Runnable task = () -> {
-            try {
-                mediaVariantProcessingPublisher.orElseThrow().publish(assetId);
-            } catch (RuntimeException error) {
-                log.warn("media_variant_processing_publish_failed assetId={}, fallback=synchronous", assetId, error);
-                processMissingImageVariants(assetId);
+            if (mediaVariantProcessingPublisher.isEmpty()) {
+                log.warn("media_variant_processing_publisher_missing assetId={}", assetId);
+                return;
             }
+            mediaVariantProcessingPublisher.orElseThrow().publish(assetId);
         };
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
@@ -1018,25 +862,5 @@ public class MediaAssetApplicationService
         );
     }
 
-    public record LoadedMediaAsset(
-            String contentType,
-            long contentLength,
-            Instant lastModifiedAt,
-            String version,
-            Resource resource
-    ) {
-        public long lastModified() {
-            if (lastModifiedAt == null) {
-                return -1L;
-            }
-            return lastModifiedAt.toEpochMilli();
-        }
 
-        public String eTag() {
-            String value = version == null || version.isBlank()
-                    ? Integer.toUnsignedString(Objects.hash(contentType, contentLength), 36)
-                    : version;
-            return "\"" + value + "\"";
-        }
-    }
 }

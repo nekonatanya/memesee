@@ -4,6 +4,7 @@ import java.util.List;
 
 public record MediaAssetResponse(
         Long id,
+        String publicId,
         String kind,
         String url,
         String thumbUrl,
@@ -17,6 +18,7 @@ public record MediaAssetResponse(
         int width,
         int height,
         String processingStatus,
+        String blurDataUrl,
         List<MediaAssetVariantResponse> variants
 ) {
 }

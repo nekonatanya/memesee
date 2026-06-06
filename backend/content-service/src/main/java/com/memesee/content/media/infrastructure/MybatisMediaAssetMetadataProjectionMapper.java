@@ -15,12 +15,16 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
     @Select("""
             SELECT
                 id AS asset_id,
+                public_id AS public_id,
                 owner_username AS owner_username,
                 kind AS kind,
+                bucket_name AS bucket_name,
+                object_key AS object_key,
                 original_filename AS original_filename,
                 content_type AS content_type,
                 size_bytes AS size_bytes,
-                processing_status AS processing_status
+                processing_status AS processing_status,
+                blur_data_url AS blur_data_url
             FROM media_assets
             WHERE id = #{assetId}
               AND status = 'ACTIVE'
@@ -28,12 +32,16 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
             """)
     @Results(id = "mediaAssetMetadataProjectionRow", value = {
             @Result(property = "assetId", column = "asset_id"),
+            @Result(property = "publicId", column = "public_id"),
             @Result(property = "ownerUsername", column = "owner_username"),
             @Result(property = "kind", column = "kind"),
+            @Result(property = "bucketName", column = "bucket_name"),
+            @Result(property = "objectKey", column = "object_key"),
             @Result(property = "originalFilename", column = "original_filename"),
             @Result(property = "contentType", column = "content_type"),
             @Result(property = "sizeBytes", column = "size_bytes"),
-            @Result(property = "processingStatus", column = "processing_status")
+            @Result(property = "processingStatus", column = "processing_status"),
+            @Result(property = "blurDataUrl", column = "blur_data_url")
     })
     MybatisMediaAssetMetadataProjectionRow selectActiveMediaAsset(@Param("assetId") Long assetId);
 
@@ -41,12 +49,16 @@ public interface MybatisMediaAssetMetadataProjectionMapper {
             <script>
             SELECT
                 id AS asset_id,
+                public_id AS public_id,
                 owner_username AS owner_username,
                 kind AS kind,
+                bucket_name AS bucket_name,
+                object_key AS object_key,
                 original_filename AS original_filename,
                 content_type AS content_type,
                 size_bytes AS size_bytes,
-                processing_status AS processing_status
+                processing_status AS processing_status,
+                blur_data_url AS blur_data_url
             FROM media_assets
             WHERE owner_username = #{ownerUsername}
               AND status = 'ACTIVE'

@@ -12,11 +12,15 @@ public interface MediaAttachmentProjectionPort {
 
     record MediaAttachmentProjection(
             Long assetId,
+            String publicId,
             String kind,
+            String bucketName,
+            String objectKey,
             String contentType,
             String originalFilename,
             long sizeBytes,
-            String processingStatus
+            String processingStatus,
+            String blurDataUrl
     ) {
     }
 }

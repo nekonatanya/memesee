@@ -14,6 +14,8 @@ public record CreateMainPostRequest(
         String title,
         @Size(max = 5000)
         String content,
+        @Pattern(regexp = "^(long|rich)$", message = "postMode must be long or rich.")
+        String postMode,
         @Size(max = 20)
         List<Long> mediaAssetIds,
         List<String> tags

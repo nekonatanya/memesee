@@ -15,6 +15,7 @@ export function buildComposerContentProps({ composer }) {
     showTagEditor: composer.showTagEditor,
     composerTagDraft: composer.composerTagDraft,
     composerMode: composer.composerMode,
+    composerMediaAssets: composer.composerMediaAssets,
     content: composer.content,
   };
 }

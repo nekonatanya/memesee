@@ -13,12 +13,16 @@ public interface MediaAssetMetadataProjectionPort {
 
     record MediaAssetMetadataProjection(
             Long assetId,
+            String publicId,
             String ownerUsername,
             MediaAssetKind kind,
+            String bucketName,
+            String objectKey,
             String originalFilename,
             String contentType,
             long sizeBytes,
-            String processingStatus
+            String processingStatus,
+            String blurDataUrl
     ) {
     }
 }

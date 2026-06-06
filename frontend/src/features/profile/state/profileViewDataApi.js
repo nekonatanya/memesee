@@ -3,7 +3,7 @@ import {
   listMyMainPosts as listContentMyMainPosts,
   listMySubPosts as listContentMySubPosts,
 } from "../../content/api/contentApi";
-import { normalizePostPayload } from "../../../shared/state/appHelpers";
+import { normalizePostPayload } from "../../posts/state/mainPostModel";
 import { emptyProfileInteractions } from "./profileViewHelpers";
 
 export async function loadMyProfile(client, authToken) {

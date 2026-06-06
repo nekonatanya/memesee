@@ -199,18 +199,57 @@
   color: var(--muted);
 }
 
-.markdown-image-trigger {
-  display: block;
-  width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: zoom-in;
-}
-
 .markdown-inline-image {
   display: block;
+}
+
+.responsive-image-shell {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  vertical-align: top;
+  overflow: hidden;
+  background: transparent;
+}
+
+.responsive-image-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-position: center;
+  background-size: cover;
+  filter: blur(16px);
+  opacity: 1;
+  pointer-events: none;
+  transform: scale(1.06);
+  transition: opacity 0.24s ease;
+}
+
+.responsive-image-img {
+  position: relative;
+  z-index: 1;
+}
+
+.responsive-image-shell.has-blur-placeholder .responsive-image-img {
+  opacity: 0;
+  transition: opacity 0.18s ease;
+}
+
+.responsive-image-shell.is-loaded .responsive-image-img {
+  opacity: 1;
+}
+
+.responsive-image-shell.is-loaded .responsive-image-placeholder,
+.responsive-image-shell.is-failed .responsive-image-placeholder {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .responsive-image-placeholder,
+  .responsive-image-shell.has-blur-placeholder .responsive-image-img {
+    transition: none;
+  }
 }
 
 /* 中屏断点调整 */

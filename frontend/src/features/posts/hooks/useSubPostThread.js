@@ -5,9 +5,7 @@ import {
   toggleSubPostFavorite as toggleContentSubPostFavorite,
   toggleSubPostLike as toggleContentSubPostLike,
 } from "../../content/api/contentApi";
-import {
-  normalizeSubPostPayload,
-} from "../../../shared/state/appHelpers";
+import { normalizeSubPostPayload } from "../state/mainPostModel";
 import { confirmInBrowser } from "../../../shared/platform/browserDialog";
 import { buildCreatedSubPostMutationStrategy } from "../state/mainPostMutationStrategyHelpers";
 import {

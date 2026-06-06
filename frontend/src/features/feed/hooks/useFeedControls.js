@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { isHomeFeedActive } from "../state/feedViewHelpers";
 
+const FLOATING_ACTION_SCROLL_THRESHOLD = 320;
+const FLOATING_ACTION_IDLE_HIDE_DELAY_MS = 1600;
+
 export function useFeedControls({
   routeType,
   view,
@@ -51,13 +54,34 @@ export function useFeedControls({
   }
 
   useEffect(() => {
+    let hideTimerId = null;
+
+    const clearHideTimer = () => {
+      if (hideTimerId) {
+        window.clearTimeout(hideTimerId);
+        hideTimerId = null;
+      }
+    };
+
     const onScroll = () => {
       const y = window.scrollY || window.pageYOffset || 0;
-      setShowBackTop(y > 320);
+      clearHideTimer();
+
+      if (y <= FLOATING_ACTION_SCROLL_THRESHOLD) {
+        setShowBackTop(false);
+        return;
+      }
+
+      setShowBackTop(true);
+      hideTimerId = window.setTimeout(() => {
+        setShowBackTop(false);
+        hideTimerId = null;
+      }, FLOATING_ACTION_IDLE_HIDE_DELAY_MS);
     };
-    onScroll();
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
+      clearHideTimer();
       window.removeEventListener("scroll", onScroll);
     };
   }, []);

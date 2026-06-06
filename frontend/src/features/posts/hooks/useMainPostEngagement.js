@@ -6,6 +6,40 @@ import {
 import { buildMainPostEngagementMutationStrategy } from "../state/mainPostMutationStrategyHelpers";
 import { UI_MESSAGES, readableError } from "../../../shared/state/uiMessages";
 
+function toFiniteNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function hasOwnValue(object, key) {
+  return Object.prototype.hasOwnProperty.call(object || {}, key)
+    && object[key] !== undefined
+    && object[key] !== null;
+}
+
+function resolveNextEngagementCount({
+  response,
+  countKey,
+  currentCount,
+  wasActive,
+  nextActive,
+}) {
+  const safeCurrentCount = Math.max(0, toFiniteNumber(currentCount) ?? 0);
+  const delta = nextActive === wasActive ? 0 : (nextActive ? 1 : -1);
+  const localNextCount = Math.max(0, safeCurrentCount + delta);
+  const responseCount = hasOwnValue(response, countKey)
+    ? toFiniteNumber(response[countKey])
+    : null;
+
+  if (responseCount === null) {
+    return localNextCount;
+  }
+  if (delta !== 0 && responseCount === safeCurrentCount) {
+    return localNextCount;
+  }
+  return Math.max(0, responseCount);
+}
+
 export function useMainPostEngagement({
   route,
   isLoggedIn,
@@ -20,6 +54,14 @@ export function useMainPostEngagement({
   const selectedPost = detailQueryRuntime?.selectedPost;
   const posts = Array.isArray(feedQueryRuntime?.posts) ? feedQueryRuntime.posts : [];
   const feedSortMode = feedQueryRuntime?.feedSortMode;
+
+  function getCurrentMainPostCount(mainPostId, countKey) {
+    if (selectedPost && Number(selectedPost.id || 0) === Number(mainPostId || 0)) {
+      return selectedPost[countKey];
+    }
+    const feedPost = posts.find((post) => Number(post.id || 0) === Number(mainPostId || 0));
+    return feedPost?.[countKey];
+  }
 
   const reportUserActivity = useCallback(async (activity, options = {}) => {
     if (!isLoggedIn || !token) {
@@ -81,8 +123,14 @@ export function useMainPostEngagement({
         likedByMe,
       });
       const nextHotScore = Number(response?.hotScore);
-      const nextCount = Number(response?.likeCount || 0);
       const nextLikedByMe = Boolean(response?.likedByMe);
+      const nextCount = resolveNextEngagementCount({
+        response,
+        countKey: "likeCount",
+        currentCount: getCurrentMainPostCount(mainPostId, "likeCount"),
+        wasActive: likedByMe,
+        nextActive: nextLikedByMe,
+      });
       const engagementState = {
         likeCount: nextCount,
         likedByMe: nextLikedByMe,
@@ -124,8 +172,14 @@ export function useMainPostEngagement({
         favoritedByMe,
       });
       const nextHotScore = Number(response?.hotScore);
-      const nextCount = Number(response?.favoriteCount || 0);
       const nextFavoritedByMe = Boolean(response?.favoritedByMe);
+      const nextCount = resolveNextEngagementCount({
+        response,
+        countKey: "favoriteCount",
+        currentCount: getCurrentMainPostCount(mainPostId, "favoriteCount"),
+        wasActive: favoritedByMe,
+        nextActive: nextFavoritedByMe,
+      });
       const engagementState = {
         favoriteCount: nextCount,
         favoritedByMe: nextFavoritedByMe,

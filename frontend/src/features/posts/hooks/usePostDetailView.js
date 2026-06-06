@@ -3,12 +3,11 @@ import {
   getMainPost as getContentMainPost,
   listSubPostPage as listContentSubPostPage,
 } from "../../content/api/contentApi";
+import { compareSubPostsBySort } from "../../../shared/state/appHelpers";
 import {
-  compareSubPostsBySort,
-  extractImageUrls,
   normalizePostPayload,
   normalizeSubPostPayload,
-} from "../../../shared/state/appHelpers";
+} from "../state/mainPostModel";
 import {
   buildGuardedPostThreadRuntimeCallbacks,
   buildPostThreadMessageHandlers,
@@ -305,10 +304,7 @@ export function usePostDetailView({
       : null;
   const selectedLikeCount = Number(selectedPost?.likeCount || 0);
   const selectedFavoriteCount = Number(selectedPost?.favoriteCount || 0);
-  const detailImageUrls = useMemo(
-    () => extractImageUrls(selectedPost?.content || "", apiBase),
-    [selectedPost?.content, apiBase],
-  );
+  const detailImageUrls = useMemo(() => [], []);
   const richDetailImages = useMemo(() => {
     if (!selectedPost || selectedPost.postMode !== "rich") {
       return [];

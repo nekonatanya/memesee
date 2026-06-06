@@ -33,6 +33,9 @@ public class MainPost {
     @Column(nullable = false, columnDefinition = "text")
     private String content;
 
+    @Column(nullable = false, length = 16)
+    private String postMode = "long";
+
     @Convert(converter = MainPostTagsJsonConverter.class)
     @Column(nullable = false, length = 255)
     private List<String> tags = List.of();
@@ -68,14 +71,19 @@ public class MainPost {
     }
 
     public MainPost(Long communityId, String authorUsername, String title, String content) {
-        this(communityId, authorUsername, title, content, List.of());
+        this(communityId, authorUsername, title, content, List.of(), "long");
     }
 
     public MainPost(Long communityId, String authorUsername, String title, String content, List<String> tags) {
+        this(communityId, authorUsername, title, content, tags, "long");
+    }
+
+    public MainPost(Long communityId, String authorUsername, String title, String content, List<String> tags, String postMode) {
         this.communityId = communityId;
         this.authorUsername = authorUsername;
         this.title = title;
         this.content = content;
+        this.postMode = normalizePostMode(postMode);
         this.tags = copyTags(tags);
         this.heatScore = BigDecimal.ZERO.setScale(6);
         this.viewCount = 0L;
@@ -93,8 +101,13 @@ public class MainPost {
     }
 
     public void updateContent(String title, String content, List<String> tags) {
+        updateContent(title, content, tags, this.postMode);
+    }
+
+    public void updateContent(String title, String content, List<String> tags, String postMode) {
         this.title = title;
         this.content = content;
+        this.postMode = normalizePostMode(postMode);
         this.tags = copyTags(tags);
         this.updatedAt = Instant.now();
     }
@@ -175,6 +188,10 @@ public class MainPost {
         return content;
     }
 
+    public String getPostMode() {
+        return postMode;
+    }
+
     public List<String> getTags() {
         return copyTags(tags);
     }
@@ -213,6 +230,10 @@ public class MainPost {
 
     public Instant getDeletedAt() {
         return deletedAt;
+    }
+
+    private String normalizePostMode(String postMode) {
+        return "rich".equals(postMode) ? "rich" : "long";
     }
 
     private List<String> copyTags(List<String> tags) {

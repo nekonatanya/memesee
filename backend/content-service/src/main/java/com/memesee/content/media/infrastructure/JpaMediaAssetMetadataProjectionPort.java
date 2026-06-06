@@ -88,12 +88,16 @@ public class JpaMediaAssetMetadataProjectionPort implements MediaAssetMetadataPr
     private MediaAssetMetadataProjection toProjection(MediaAsset asset) {
         return new MediaAssetMetadataProjection(
                 asset.getId(),
+                asset.getPublicId(),
                 asset.getOwnerUsername(),
                 asset.getKind(),
+                asset.getBucketName(),
+                asset.getObjectKey(),
                 asset.getOriginalFilename(),
                 asset.getContentType(),
                 asset.getSizeBytes(),
-                asset.getProcessingStatus().name()
+                asset.getProcessingStatus().name(),
+                asset.getBlurDataUrl()
         );
     }
 

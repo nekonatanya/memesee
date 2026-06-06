@@ -11,6 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.UUID;
 
 @Entity
 @Table(name = "media_assets")
@@ -19,6 +20,9 @@ public class MediaAsset {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(nullable = false, length = 36, unique = true)
+    private String publicId;
 
     @Column(nullable = false, length = 80)
     private String ownerUsername;
@@ -49,6 +53,9 @@ public class MediaAsset {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private MediaAssetProcessingStatus processingStatus;
+
+    @Column(columnDefinition = "text")
+    private String blurDataUrl;
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
@@ -83,6 +90,9 @@ public class MediaAsset {
 
     @PrePersist
     void onCreate() {
+        if (publicId == null || publicId.isBlank()) {
+            publicId = UUID.randomUUID().toString();
+        }
         Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
@@ -95,6 +105,10 @@ public class MediaAsset {
 
     public Long getId() {
         return id;
+    }
+
+    public String getPublicId() {
+        return publicId;
     }
 
     public String getOwnerUsername() {
@@ -131,6 +145,10 @@ public class MediaAsset {
 
     public MediaAssetProcessingStatus getProcessingStatus() {
         return processingStatus;
+    }
+
+    public String getBlurDataUrl() {
+        return blurDataUrl;
     }
 
     public Instant getCreatedAt() {

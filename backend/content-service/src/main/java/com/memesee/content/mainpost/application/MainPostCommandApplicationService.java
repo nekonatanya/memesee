@@ -59,7 +59,8 @@ public class MainPostCommandApplicationService implements MainPostCollaborationA
                 authContext.username(),
                 normalizeTitle(request.title()),
                 normalizeContent(request.content(), request.mediaAssetIds()),
-                normalizeTags(request.tags())
+                normalizeTags(request.tags()),
+                normalizePostMode(request.postMode())
         );
         mainPostRepository.save(mainPost);
         mainPostMediaCommandCollaborationApplicationService.syncMainPostMedia(
@@ -86,7 +87,8 @@ public class MainPostCommandApplicationService implements MainPostCollaborationA
         mainPost.updateContent(
                 normalizeTitle(request.title()),
                 normalizeContent(request.content(), request.mediaAssetIds()),
-                normalizeTags(request.tags())
+                normalizeTags(request.tags()),
+                normalizePostMode(request.postMode())
         );
         mainPostMediaCommandCollaborationApplicationService.syncMainPostMedia(
                 mainPost.getId(),
@@ -158,6 +160,11 @@ public class MainPostCommandApplicationService implements MainPostCollaborationA
             );
         }
         return normalizedContent;
+    }
+
+
+    private String normalizePostMode(String postMode) {
+        return "rich".equals(postMode) ? "rich" : "long";
     }
 
     private List<String> normalizeTags(List<String> rawTags) {

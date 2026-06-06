@@ -1,16 +1,26 @@
 import { useMemo, useState } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { defaultUrlTransform } from "react-markdown";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import UiIcon from "../../../shared/components/UiIcon";
+import { normalizeAssetUrl } from "../../../shared/media/mediaAssetHelpers";
 import {
-  buildPostMediaCacheVersionSeed,
-  normalizeAssetUrl,
+  removeExternalMarkdownImages,
   removeMarkdownImages,
-  withMediaCacheVersion,
-} from "../../../shared/state/appHelpers";
-import { DETAIL_IMAGE_SIZES } from "../../../shared/media/responsiveImages";
-import { resolveMarkdownImageSizing } from "../../../shared/state/markdownImageSizing";
+} from "../../../shared/media/markdownContent";
+import MarkdownMediaImage from "../../../shared/media/MarkdownMediaImage";
+import {
+  buildMarkdownImageGallery,
+  getMarkdownImageOccurrenceIndex,
+  buildMarkdownMediaAssetMap,
+  resolveMarkdownImageData,
+} from "../../../shared/media/markdownImages";
+
+function keepMarkdownUrl(value) {
+  return String(value || "").trim().startsWith("media:")
+    ? value
+    : defaultUrlTransform(value);
+}
 
 function extractCodeText(children) {
   const codeNode = Array.isArray(children) ? children[0] : children;
@@ -69,66 +79,31 @@ function MarkdownCodeBlock({ children }) {
   );
 }
 
-function toOriginalMediaUrl(url) {
-  if (!url || !url.includes("/api/media-assets/")) {
-    return url;
-  }
-  try {
-    const parsed = new URL(url, window.location.origin);
-    if (parsed.pathname.includes("/api/media-assets/") && parsed.pathname.endsWith("/binary")) {
-      parsed.searchParams.set("variant", "original");
-      return `${parsed.pathname}${parsed.search}`;
-    }
-  } catch {
-    return url.replace(/([?&])variant=[^&]*/i, "$1variant=original");
-  }
-  return url;
-}
-
-function toVariantMediaUrl(url, variant) {
-  if (!url || !url.includes("/api/media-assets/")) {
-    return "";
-  }
-  try {
-    const parsed = new URL(url, window.location.origin);
-    if (parsed.pathname.includes("/api/media-assets/") && parsed.pathname.endsWith("/binary")) {
-      parsed.searchParams.set("variant", variant);
-      return `${parsed.pathname}${parsed.search}`;
-    }
-  } catch {
-    return "";
-  }
-  return "";
-}
-
-function buildMarkdownImageSource(url) {
-  const candidates = [
-    ["small", 720],
-    ["medium", 1080],
-    ["display", 1600],
-  ]
-    .map(([variant, width]) => {
-      const variantUrl = toVariantMediaUrl(url, variant);
-      return variantUrl ? `${variantUrl} ${width}w` : "";
-    })
-    .filter(Boolean);
-  return {
-    src: url,
-    srcSet: candidates.join(", "),
-    sizes: DETAIL_IMAGE_SIZES,
-    originalUrl: toOriginalMediaUrl(url),
-  };
-}
-
 export function useDetailMarkdown({
   apiBase,
   detailImageUrls,
   selectedPost,
   openImageViewer,
 }) {
-  const mediaVersionSeed = useMemo(
-    () => buildPostMediaCacheVersionSeed(selectedPost),
-    [selectedPost],
+  const [firstMarkdownImageLoadedKey, setFirstMarkdownImageLoadedKey] = useState("");
+  const renderedMarkdownContent = selectedPost?.postMode === "rich"
+    ? removeMarkdownImages(selectedPost?.content || "")
+    : removeExternalMarkdownImages(selectedPost?.content || "");
+
+  const markdownImageLoadKey = String(selectedPost?.id || "") + ":" + renderedMarkdownContent;
+  const firstMarkdownImageLoaded = firstMarkdownImageLoadedKey === markdownImageLoadKey;
+
+  const mediaAssetMap = useMemo(
+    () => buildMarkdownMediaAssetMap(selectedPost?.mediaAssets),
+    [selectedPost?.mediaAssets],
+  );
+  const markdownImageGallery = useMemo(
+    () => buildMarkdownImageGallery({
+      content: renderedMarkdownContent,
+      mediaAssetMap,
+      apiBase,
+    }),
+    [apiBase, mediaAssetMap, renderedMarkdownContent],
   );
   const markdownComponents = useMemo(
     () => ({
@@ -140,75 +115,73 @@ export function useDetailMarkdown({
           </a>
         );
       },
-      img: ({ src, alt, title }) => {
-        if (selectedPost?.postMode === "rich") {
+      img: ({ src, alt }) => {
+        const imageData = resolveMarkdownImageData({
+          src,
+          alt,
+          mediaAssetMap,
+          apiBase,
+        });
+        if (!imageData) {
           return null;
         }
-        const normalized = withMediaCacheVersion(
-          normalizeAssetUrl(src || "", apiBase),
-          mediaVersionSeed,
-        );
-        if (!normalized) {
-          return null;
-        }
-        const viewerImages = detailImageUrls
-          .map((url) => withMediaCacheVersion(url, mediaVersionSeed));
-        const startIndex = Math.max(0, viewerImages.indexOf(normalized));
-        const originalUrl = toOriginalMediaUrl(normalized);
-        const originalGallery = viewerImages
-          .map(toOriginalMediaUrl);
-        const imageSource = buildMarkdownImageSource(normalized);
-        const imageSources = viewerImages
-          .map(buildMarkdownImageSource);
-        const imageSizing = resolveMarkdownImageSizing({ alt, title });
+        const imageOccurrenceIndex = getMarkdownImageOccurrenceIndex({
+          content: renderedMarkdownContent,
+          src,
+        });
+        const isLongMode = selectedPost?.postMode === "long";
+        const shouldPrioritizeImage = isLongMode && imageOccurrenceIndex === 0;
+        const shouldDeferImage = isLongMode && imageOccurrenceIndex > 0;
+        const viewerImages = markdownImageGallery.length > 0
+          ? markdownImageGallery.map((entry) => entry.imageUrl)
+          : (Array.isArray(detailImageUrls) ? detailImageUrls : []);
+        const viewerOriginalImages = markdownImageGallery.length > 0
+          ? markdownImageGallery.map((entry) => entry.originalUrl)
+          : [];
+        const viewerImageSources = markdownImageGallery.length > 0
+          ? markdownImageGallery.map((entry) => entry.imageSource)
+          : [];
         return (
-          <button
-            type="button"
-            className="markdown-image-trigger"
-            style={imageSizing.containerStyle}
-            onClick={() => openImageViewer(normalized, viewerImages, {
-              startIndex,
-              originalUrl,
-              originalImages: originalGallery,
-              imageSources,
-            })}
-          >
-            <span className="markdown-image-frame" style={imageSizing.frameStyle}>
-              <img
-                src={normalized}
-                srcSet={imageSource.srcSet || undefined}
-                sizes={imageSource.sizes}
-                alt={imageSizing.alt || "image"}
-                className="markdown-inline-image"
-                style={imageSizing.imageStyle}
-                loading="lazy"
-                decoding="async"
-              />
-            </span>
-          </button>
+          <MarkdownMediaImage
+            {...imageData}
+            openImageViewer={openImageViewer}
+            viewerImages={viewerImages}
+            viewerOriginalImages={viewerOriginalImages}
+            viewerImageSources={viewerImageSources}
+            loading={shouldPrioritizeImage ? "eager" : "lazy"}
+            fetchPriority={shouldPrioritizeImage ? "high" : "low"}
+            deferLoad={shouldDeferImage}
+            holdLoad={shouldDeferImage && !firstMarkdownImageLoaded}
+            onLoadStateChange={shouldPrioritizeImage
+              ? (nextState) => {
+                  if (nextState?.loaded || nextState?.failed) {
+                    setFirstMarkdownImageLoadedKey(markdownImageLoadKey);
+                  }
+                }
+              : undefined}
+          />
         );
       },
       pre: ({ children }) => (
         <MarkdownCodeBlock>{children}</MarkdownCodeBlock>
       ),
     }),
-    [apiBase, detailImageUrls, mediaVersionSeed, openImageViewer, selectedPost?.postMode],
+    [apiBase, detailImageUrls, firstMarkdownImageLoaded, markdownImageGallery, markdownImageLoadKey, mediaAssetMap, openImageViewer, renderedMarkdownContent, selectedPost?.postMode],
   );
 
   return useMemo(() => {
     if (!selectedPost) {
       return null;
     }
-    const content = selectedPost.postMode === "rich"
-      ? removeMarkdownImages(selectedPost.content || "")
-      : selectedPost.content || "";
+    const content = renderedMarkdownContent;
     return (
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkBreaks]}
         components={markdownComponents}
+        urlTransform={keepMarkdownUrl}
       >
         {content}
       </ReactMarkdown>
     );
-  }, [selectedPost, markdownComponents]);
+  }, [renderedMarkdownContent, selectedPost, markdownComponents]);
 }

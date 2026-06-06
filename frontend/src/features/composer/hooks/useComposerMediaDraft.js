@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { uploadMediaAsset as uploadContentMediaAsset } from "../../content/api/contentApi";
 import {
-  buildComposerMarkdownImage,
+  appendComposerMarkdownImages,
   buildComposerUploadMessage,
   getNextComposerMediaIndex,
   mergeComposerMediaAssets,
@@ -82,8 +82,7 @@ export function useComposerMediaDraft({
     }
     setUploadingAssets(true);
     try {
-      const uploadedImages = [];
-      const appendedBlocks = [];
+      const imageFiles = [];
       let skippedCount = 0;
       for (const file of files) {
         const isImage = String(file.type || "").startsWith("image/");
@@ -91,33 +90,33 @@ export function useComposerMediaDraft({
           skippedCount += 1;
           continue;
         }
-        const uploadedAsset = await uploadContentMediaAsset(client, { token, file });
-        if (!uploadedAsset.url) {
-          throw new Error("empty image url");
+        imageFiles.push(file);
+      }
+
+      const uploadedEntries = new Array(imageFiles.length);
+      let nextIndex = 0;
+      const uploadNext = async () => {
+        while (nextIndex < imageFiles.length) {
+          const currentIndex = nextIndex;
+          const file = imageFiles[currentIndex];
+          nextIndex += 1;
+          const uploadedAsset = await uploadContentMediaAsset(client, { token, file });
+          if (!uploadedAsset.url) {
+            throw new Error("empty image url");
+          }
+          uploadedEntries[currentIndex] = uploadedAsset;
         }
-        if (composerMode === "rich") {
-          uploadedImages.push(uploadedAsset);
-        } else {
-          appendedBlocks.push(buildComposerMarkdownImage(file.name, uploadedAsset.url));
-        }
+      };
+      const concurrency = Math.min(3, imageFiles.length);
+      await Promise.all(Array.from({ length: concurrency }, uploadNext));
+
+      const uploadedImages = uploadedEntries.filter(Boolean);
+      setComposerMediaAssets((prev) => mergeComposerMediaAssets(prev, uploadedImages));
+      setComposerMediaUrls((prev) => mergeComposerMediaUrls(prev, uploadedImages));
+      if (composerMode === "long" && typeof setContent === "function") {
+        setContent((prev) => appendComposerMarkdownImages(prev, uploadedImages));
       }
-      if (composerMode === "rich" && uploadedImages.length > 0) {
-        setComposerMediaAssets((prev) => mergeComposerMediaAssets(prev, uploadedImages));
-        setComposerMediaUrls((prev) => mergeComposerMediaUrls(prev, uploadedImages));
-      }
-      if (appendedBlocks.length > 0) {
-        const blockText = appendedBlocks.join("\n");
-        setContent((prev) => {
-          const current = String(prev || "").replace(/\s+$/g, "");
-          return `${current}${current ? "\n" : ""}${blockText}\n`;
-        });
-      }
-      const imageCount = uploadedImages.length + (
-        composerMode === "long"
-          ? appendedBlocks.filter((item) => item.startsWith("![")).length
-          : 0
-      );
-      setMessage(buildComposerUploadMessage({ imageCount, skippedCount }));
+      setMessage(buildComposerUploadMessage({ imageCount: uploadedImages.length, skippedCount }));
     } catch (error) {
       setMessage(readableError(error, UI_MESSAGES.mediaUploadFailed));
     } finally {

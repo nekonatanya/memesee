@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  normalizeAssetUrl,
-  parseRouteFromLocation,
-} from "../../../shared/state/appHelpers";
+import { normalizeAssetUrl } from "../../../shared/media/mediaAssetHelpers";
+import { parseRouteFromLocation } from "../../../shared/state/appHelpers";
 
 export function useAppChrome({
   apiBase,

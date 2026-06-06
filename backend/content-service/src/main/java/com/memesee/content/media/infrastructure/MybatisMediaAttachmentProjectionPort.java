@@ -83,11 +83,15 @@ public class MybatisMediaAttachmentProjectionPort implements MediaAttachmentProj
     private MediaAttachmentProjection toProjection(MybatisMediaAttachmentProjectionRow row) {
         return new MediaAttachmentProjection(
                 row.getAssetId(),
+                row.getPublicId(),
                 row.getKind(),
+                row.getBucketName(),
+                row.getObjectKey(),
                 row.getContentType(),
                 row.getOriginalFilename(),
                 safeLong(row.getSizeBytes()),
-                row.getProcessingStatus()
+                row.getProcessingStatus(),
+                row.getBlurDataUrl()
         );
     }
 

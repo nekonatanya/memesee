@@ -454,7 +454,7 @@ export default function SubPostPanel({
       {(loadingSubPosts || subPosts.length === 0 || canManageMainPost) && (
         <div className="sub-post-panel-head">
           <div className="sub-post-panel-status">
-            {loadingSubPosts && <p className="paper-inline-status side-empty">正在加载子帖...</p>}
+            {loadingSubPosts && <p className="paper-inline-status side-empty">正在读取子帖...</p>}
             {!loadingSubPosts && subPosts.length === 0 && (
               <p className="paper-inline-status side-empty">还没有子帖，来抢首帖吧。</p>
             )}
@@ -489,7 +489,7 @@ export default function SubPostPanel({
               onClick={() => loadMoreSubPosts?.()}
               disabled={loadingMoreSubPosts}
             >
-              {loadingMoreSubPosts ? "正在加载更多..." : "加载更多子帖"}
+              {loadingMoreSubPosts ? "正在加载更多内容..." : "查看更多子帖"}
             </button>
           )}
         </div>

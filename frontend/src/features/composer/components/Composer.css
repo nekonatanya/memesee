@@ -1126,17 +1126,6 @@
   color: rgba(47, 36, 27, 0.9);
 }
 
-.composer-paper .markdown-image-trigger {
-  display: block;
-  width: 100%;
-  max-width: 100%;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  cursor: zoom-in;
-}
-
 .composer-paper .markdown-content .markdown-image-frame {
   border: 2px solid rgba(47, 36, 27, 0.48);
   border-radius: 10px;
@@ -1345,6 +1334,26 @@
   background: var(--compose-paper-warm);
   box-shadow: 2px 2px 0 rgba(47, 36, 27, 0.1);
   overflow: hidden;
+}
+
+.composer-paper .post-rich-gallery-image-shell .responsive-image-shell {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+}
+
+.composer-paper .post-rich-gallery-image-shell .responsive-image-placeholder {
+  border-radius: inherit;
+}
+
+.composer-paper .post-rich-gallery-image-shell .responsive-image-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  border: 0;
+  background: transparent;
 }
 
 .composer-paper .post-rich-gallery-image-shell.is-sizing {

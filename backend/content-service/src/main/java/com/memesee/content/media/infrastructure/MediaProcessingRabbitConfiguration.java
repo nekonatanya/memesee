@@ -7,13 +7,9 @@ import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.annotation.EnableRabbit;
-import org.springframework.amqp.rabbit.config.RetryInterceptorBuilder;
-import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.rabbit.retry.MessageRecoverer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
-import org.springframework.boot.autoconfigure.amqp.SimpleRabbitListenerContainerFactoryConfigurer;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -83,29 +79,5 @@ public class MediaProcessingRabbitConfiguration {
         RabbitTemplate rabbitTemplate = new RabbitTemplate(connectionFactory);
         rabbitTemplate.setMessageConverter(mediaProcessingMessageConverter);
         return rabbitTemplate;
-    }
-
-    @Bean
-    public SimpleRabbitListenerContainerFactory rabbitListenerContainerFactory(
-            SimpleRabbitListenerContainerFactoryConfigurer configurer,
-            ConnectionFactory connectionFactory,
-            Jackson2JsonMessageConverter mediaProcessingMessageConverter,
-            MediaProcessingQueueProperties properties,
-            MessageRecoverer rabbitMediaVariantProcessingFailureRecoverer
-    ) {
-        SimpleRabbitListenerContainerFactory factory = new SimpleRabbitListenerContainerFactory();
-        configurer.configure(factory, connectionFactory);
-        factory.setMessageConverter(mediaProcessingMessageConverter);
-        factory.setDefaultRequeueRejected(false);
-        factory.setAdviceChain(RetryInterceptorBuilder.stateless()
-                .maxAttempts(Math.max(1, properties.getMaxAttempts()))
-                .backOffOptions(
-                        Math.max(0L, properties.getInitialIntervalMs()),
-                        Math.max(1.0d, properties.getMultiplier()),
-                        Math.max(0L, properties.getMaxIntervalMs())
-                )
-                .recoverer(rabbitMediaVariantProcessingFailureRecoverer)
-                .build());
-        return factory;
     }
 }

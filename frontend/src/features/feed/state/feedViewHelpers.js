@@ -1,4 +1,4 @@
-import { normalizePostPayload } from "../../../shared/state/appHelpers";
+import { normalizePostPayload } from "../../posts/state/mainPostModel";
 
 export function normalizeFeedPage(payload, apiBase) {
   const posts = (Array.isArray(payload?.posts) ? payload.posts : [])

@@ -7,10 +7,10 @@ import {
   authorInitial,
   clampText,
   formatDateTime,
-  formatHeatScore,
   formatTime,
   subPostQuotePreview,
 } from "../../shared/state/appHelpers";
+import { formatHeatScore } from "../../features/posts/state/mainPostModel";
 
 export const runtimeHelpers = {
   formatTime,

@@ -1,6 +1,7 @@
 package com.memesee.content.feed.application;
 
 import com.memesee.content.community.domain.Community;
+import com.memesee.content.mainpost.dto.MainPostDetailMediaAssetResponse;
 import com.memesee.content.mainpost.dto.MainPostDetailResponse;
 import com.memesee.content.mainpost.dto.MainPostSummaryResponse;
 import com.memesee.content.mainpost.domain.MainPost;
@@ -33,6 +34,7 @@ public class MainPostReadModelAssembler {
                 mainPost.getTitle(),
                 mainPost.getContent(),
                 buildContentPreview(mainPost.getContent()),
+                mainPost.getPostMode(),
                 mainPost.getAuthorUsername(),
                 mainPost.getCreatedAt(),
                 mainPost.getUpdatedAt(),
@@ -57,6 +59,7 @@ public class MainPostReadModelAssembler {
                 readModel.communityName(),
                 readModel.title(),
                 readModel.contentPreview(),
+                readModel.postMode(),
                 readModel.authorUsername(),
                 readModel.createdAt(),
                 readModel.updatedAt(),
@@ -81,6 +84,7 @@ public class MainPostReadModelAssembler {
                 readModel.communityName(),
                 readModel.title(),
                 readModel.content(),
+                readModel.postMode(),
                 readModel.authorUsername(),
                 readModel.createdAt(),
                 readModel.updatedAt(),
@@ -92,9 +96,18 @@ public class MainPostReadModelAssembler {
                 readModel.favoriteCount(),
                 readModel.likedByMe(),
                 readModel.favoritedByMe(),
-                readModel.mediaAssets(),
+                toDetailMediaAssets(readModel.mediaAssets()),
                 readModel.tags()
         );
+    }
+
+    private List<MainPostDetailMediaAssetResponse> toDetailMediaAssets(List<MediaAssetResponse> mediaAssets) {
+        if (mediaAssets == null || mediaAssets.isEmpty()) {
+            return List.of();
+        }
+        return mediaAssets.stream()
+                .map(MainPostDetailMediaAssetResponse::from)
+                .toList();
     }
 
     public String buildContentPreview(String content) {

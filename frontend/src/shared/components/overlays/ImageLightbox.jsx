@@ -80,6 +80,8 @@ export default function ImageLightbox({
   const hasDistinctOriginalUrl = Boolean(originalUrl && originalUrl !== displayUrl);
   const hasOriginalCandidate = hasDistinctOriginalUrl;
   const currentUrl = useOriginal && hasOriginalCandidate ? originalUrl : displayUrl;
+  const currentFetchPriority = index === 0 && !useOriginal ? "high" : "low";
+  const currentLoading = index === 0 && !useOriginal ? "eager" : "lazy";
   const onCloseRef = useRef(onClose);
   const zoomInRef = useRef(() => {});
   const zoomOutRef = useRef(() => {});
@@ -511,7 +513,8 @@ export default function ImageLightbox({
             className="image-lightbox-media"
             draggable={false}
             decoding="async"
-            fetchPriority="high"
+            loading={currentLoading}
+            fetchPriority={currentFetchPriority}
             style={{
               transform: `translate3d(${offset.x}px, ${offset.y}px, 0) scale(${zoom})`,
             }}

@@ -7,6 +7,7 @@ export function buildComposerStateLayoutInput({ composerDraft }) {
     composerTagDraft: composerDraft.composerTagDraft,
     composerMode: composerDraft.composerMode,
     composerMediaUrls: composerDraft.composerMediaUrls,
+    composerMediaAssets: composerDraft.composerMediaAssets,
     composerMediaIndex: composerDraft.composerMediaIndex,
     content: composerDraft.content,
     composerCommunityName: composerDraft.composerCommunityName,

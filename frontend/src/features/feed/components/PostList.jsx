@@ -1,4 +1,7 @@
-﻿import PostCard from "../../posts/components/post/PostCard";
+import PostCard from "../../posts/components/post/PostCard";
+import { StatusCard } from "../../../shared/components/PageShell";
+
+const FEED_EAGER_PREVIEW_POST_COUNT = 2;
 
 export default function PostList({
   loadingPosts,
@@ -17,31 +20,34 @@ export default function PostList({
   return (
     <div className={`post-list-flow ${loadingPosts && hasPosts ? "is-refreshing" : ""}`}>
       {loadingPosts && !hasPosts && (
-        <div className="feed-status-card is-loading" role="status" aria-live="polite">
-          <span className="feed-status-kicker">主帖信息流</span>
-          <strong>正在加载主帖</strong>
-          <span className="feed-status-subtext">稍等一下，正在整理最新内容。</span>
+        <StatusCard
+          kicker="主帖信息流"
+          title="主帖马上出现"
+          description="正在取回最新内容，很快就好。"
+          tone="loading"
+          role="status"
+          ariaLive="polite"
+        >
           <span className="feed-status-dots" aria-hidden="true">
             <i />
             <i />
             <i />
           </span>
-        </div>
+        </StatusCard>
       )}
       {!loadingPosts && !hasPosts && (
-        <div className="feed-status-card feed-status-card-empty">
-          <div className="feed-status-mainline">
-            <span className="feed-status-mark" aria-hidden="true" />
-            <strong>没有匹配的主帖</strong>
-          </div>
-          <span className="feed-status-subtext">这片区域暂时很安静。可以换个关键词、切回大厅，或发布一条新主帖。</span>
-        </div>
+        <StatusCard
+          title="没有匹配的主帖"
+          description="这片区域暂时很安静。可以换个关键词、切回大厅，或发布一条新主帖。"
+          tone="empty"
+        />
       )}
       {hasPosts &&
-        filteredPosts.map((post) => (
+        filteredPosts.map((post, postIndex) => (
           <PostCard
             key={post.id}
             post={post}
+            prioritizePreviewImages={postIndex < FEED_EAGER_PREVIEW_POST_COUNT}
             openPostDetail={openPostDetail}
             prefetchMainPostDetail={prefetchMainPostDetail}
             formatTime={formatTime}
@@ -51,7 +57,7 @@ export default function PostList({
         ))}
       {!loadingPosts && hasPosts && (
         <div ref={feedLoadMoreRef} className="feed-load-more">
-          {loadingMorePosts ? "正在加载更多..." : feedHasMore ? "继续下滑加载更多" : "已经到底了"}
+          {loadingMorePosts ? "正在加载更多内容..." : feedHasMore ? "继续下滑查看更多" : "已经到底了"}
         </div>
       )}
     </div>

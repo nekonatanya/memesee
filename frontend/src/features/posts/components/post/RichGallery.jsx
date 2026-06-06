@@ -1,24 +1,43 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import UiIcon from "../../../../shared/components/UiIcon";
+import ResponsiveImage, {
+  ImageFailureFallback,
+  canPrefetchImages,
+} from "../../../../shared/media/ResponsiveImage";
+
+function toPositiveNumber(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) && number > 0 ? number : 0;
+}
+
+function readSourceSize(source) {
+  const width = toPositiveNumber(source?.width);
+  const height = toPositiveNumber(source?.height);
+  return width > 0 && height > 0 ? { width, height } : null;
+}
 
 export default function RichGallery({
-  richDetailImages,
+  richDetailImages = [],
   richOriginalImages = [],
   richImageSources = [],
   detailMediaIndex,
   setDetailMediaIndex,
   openImageViewer,
 }) {
-  const imageSources = useMemo(
-    () => (Array.isArray(richImageSources) && richImageSources.length > 0
+  const imageSources = useMemo(() => {
+    const sources = Array.isArray(richImageSources) && richImageSources.length > 0
       ? richImageSources
       : richDetailImages.map((src, index) => ({
           src,
           displayUrl: src,
           originalUrl: richOriginalImages[index] || src,
-        }))),
-    [richDetailImages, richImageSources, richOriginalImages],
-  );
+        }));
+    return sources.map((source, imageIndex) => ({
+      ...source,
+      loadingPriority: imageIndex === 0 ? "eager" : "lazy",
+      fetchPriority: imageIndex === 0 ? "high" : "low",
+    }));
+  }, [richDetailImages, richImageSources, richOriginalImages]);
   const displayImages = useMemo(
     () => imageSources
       .map((source) => source.src || source.displayUrl)
@@ -27,11 +46,10 @@ export default function RichGallery({
   );
   const hasMultipleImages = displayImages.length > 1;
   const currentImageSource = imageSources[detailMediaIndex] || {};
+  const currentLoading = currentImageSource.loadingPriority || (detailMediaIndex === 0 ? "eager" : "lazy");
+  const currentFetchPriority = currentImageSource.fetchPriority || (detailMediaIndex === 0 ? "high" : "low");
   const currentImage = currentImageSource.src || currentImageSource.displayUrl || displayImages[detailMediaIndex];
   const currentProcessingStatus = String(currentImageSource.processingStatus || "READY").toUpperCase();
-  const currentStatusLabel = currentProcessingStatus === "PROCESSING"
-    ? "图片处理中"
-    : (currentProcessingStatus === "FAILED" ? "处理失败" : "");
   const originalImages = useMemo(
     () => (Array.isArray(richOriginalImages) && richOriginalImages.length > 0
       ? richOriginalImages
@@ -42,31 +60,41 @@ export default function RichGallery({
   const frameRef = useRef(null);
   const [frameSize, setFrameSize] = useState({ width: 0, height: 0 });
   const [naturalSizeMap, setNaturalSizeMap] = useState({});
+  const [failedImageMap, setFailedImageMap] = useState({});
+  const [loadedImageMap, setLoadedImageMap] = useState({});
+  const imageFailed = Boolean(currentImage && failedImageMap[currentImage]);
+  const currentStatusLabel = currentProcessingStatus === "PROCESSING"
+    ? "图片处理中"
+    : (currentProcessingStatus === "FAILED" ? "处理失败" : "");
+  const currentStatusClass = currentProcessingStatus.toLowerCase();
 
   useEffect(() => {
     const frame = frameRef.current;
-    if (!frame || typeof ResizeObserver === "undefined") {
+    if (!frame) {
       return undefined;
     }
-    const observer = new ResizeObserver((entries) => {
-      const entry = entries[0];
-      if (!entry) {
-        return;
-      }
-      const nextWidth = Math.max(0, Math.floor(entry.contentRect.width));
-      const nextHeight = Math.max(0, Math.floor(entry.contentRect.height));
+    const updateFrameSize = () => {
+      const rect = frame.getBoundingClientRect();
+      const nextWidth = Math.max(0, Math.floor(rect.width));
+      const nextHeight = Math.max(0, Math.floor(rect.height));
       setFrameSize((prev) =>
         prev.width === nextWidth && prev.height === nextHeight
           ? prev
           : { width: nextWidth, height: nextHeight },
       );
-    });
-    observer.observe(frame);
-    return () => observer.disconnect();
+    };
+    updateFrameSize();
+    if (typeof ResizeObserver !== "undefined") {
+      const observer = new ResizeObserver(updateFrameSize);
+      observer.observe(frame);
+      return () => observer.disconnect();
+    }
+    window.addEventListener("resize", updateFrameSize);
+    return () => window.removeEventListener("resize", updateFrameSize);
   }, []);
 
   useEffect(() => {
-    if (!currentImage || !naturalSizeMap[currentImage]) {
+    if (!currentImage || !loadedImageMap[currentImage] || !canPrefetchImages()) {
       return undefined;
     }
     const candidates = [
@@ -80,6 +108,9 @@ export default function RichGallery({
       candidates.forEach((imageUrl) => {
         const image = new Image();
         image.decoding = "async";
+        if ("fetchPriority" in image) {
+          image.fetchPriority = "low";
+        }
         image.src = imageUrl;
       });
     };
@@ -87,11 +118,12 @@ export default function RichGallery({
       const idleId = window.requestIdleCallback(prefetchAdjacentImages, { timeout: 1200 });
       return () => window.cancelIdleCallback?.(idleId);
     }
-    const timer = window.setTimeout(prefetchAdjacentImages, 250);
+    const timer = window.setTimeout(prefetchAdjacentImages, 900);
     return () => window.clearTimeout(timer);
-  }, [currentImage, detailMediaIndex, displayImages, naturalSizeMap]);
+  }, [currentImage, detailMediaIndex, displayImages, loadedImageMap]);
 
-  const naturalSize = naturalSizeMap[currentImage];
+  const metadataSize = readSourceSize(currentImageSource);
+  const naturalSize = currentImage ? naturalSizeMap[currentImage] || metadataSize : null;
   const renderSize = useMemo(() => {
     if (!naturalSize || frameSize.width <= 0 || frameSize.height <= 0) {
       return null;
@@ -107,9 +139,26 @@ export default function RichGallery({
       width: Math.max(1, Math.floor(naturalSize.width * scale)),
       height: Math.max(1, Math.floor(naturalSize.height * scale)),
     };
-  }, [naturalSize, frameSize.width, frameSize.height]);
+  }, [frameSize.height, frameSize.width, naturalSize]);
+
+  function setCurrentImageFailed(failed) {
+    if (!currentImage) {
+      return;
+    }
+    setFailedImageMap((prev) => {
+      if (Boolean(prev[currentImage]) === failed) {
+        return prev;
+      }
+      return {
+        ...prev,
+        [currentImage]: failed,
+      };
+    });
+  }
 
   function onImageLoad(event) {
+    setCurrentImageFailed(false);
+    setLoadedImageMap((prev) => (prev[currentImage] ? prev : { ...prev, [currentImage]: true }));
     const image = event.currentTarget;
     if (!currentImage || image.naturalWidth <= 0 || image.naturalHeight <= 0) {
       return;
@@ -133,52 +182,70 @@ export default function RichGallery({
     });
   }
 
+  function onImageError() {
+    setCurrentImageFailed(true);
+  }
+
   return (
     <div className="post-rich-gallery">
       <div className="post-rich-gallery-stage">
-        <button
+        <div
           ref={frameRef}
-          type="button"
           className="post-rich-gallery-frame"
-          onClick={() =>
-            openImageViewer(currentImage, displayImages, {
-              startIndex: detailMediaIndex,
-              originalUrl: currentOriginalImage,
-              originalImages,
-              imageSources,
-            })
-          }
-          aria-label={`View image ${detailMediaIndex + 1}`}
         >
-          <span
-            className={`post-rich-gallery-image-shell ${renderSize ? "" : "is-sizing"}`}
+          <button
+            type="button"
+            className={["post-rich-gallery-image-shell", renderSize ? "" : "is-sizing", imageFailed ? "is-image-failed" : ""]
+              .filter(Boolean)
+              .join(" ")}
             style={
               renderSize
                 ? {
-                    width: `${renderSize.width}px`,
-                    height: `${renderSize.height}px`,
+                    width: String(renderSize.width) + "px",
+                    height: String(renderSize.height) + "px",
                   }
                 : undefined
             }
+            onClick={() => {
+              if (renderSize && currentImage && !imageFailed) {
+                openImageViewer(currentImage, displayImages, {
+                  startIndex: detailMediaIndex,
+                  originalUrl: currentOriginalImage,
+                  originalImages,
+                  imageSources,
+                });
+              }
+            }}
+            aria-label={`View image ${detailMediaIndex + 1}`}
           >
-            <img
+            <ResponsiveImage
               key={currentImage}
               className="post-rich-gallery-image"
               src={currentImage}
-              srcSet={currentImageSource.srcSet || undefined}
-              sizes={currentImageSource.sizes || undefined}
+              source={currentImageSource}
               alt={`Rich media ${detailMediaIndex + 1}`}
-              onLoad={onImageLoad}
+              loading={currentLoading}
               decoding="async"
-              fetchPriority="high"
+              fetchPriority={currentFetchPriority}
+              onLoad={onImageLoad}
+              onLoadStateChange={({ failed: nextFailed, loaded: nextLoaded }) => {
+                setFailedImageMap((prev) => ({ ...prev, [currentImage]: nextFailed }));
+                if (nextLoaded) {
+                  setLoadedImageMap((prev) => (prev[currentImage] ? prev : { ...prev, [currentImage]: true }));
+                }
+              }}
+              onError={onImageError}
             />
-          </span>
+            {imageFailed && (
+              <ImageFailureFallback className="post-rich-gallery-image-fallback" />
+            )}
+          </button>
           {currentStatusLabel && (
-            <span className={`post-rich-gallery-status is-${currentProcessingStatus.toLowerCase()}`}>
+            <span className={`post-rich-gallery-status is-${currentStatusClass}`}>
               {currentStatusLabel}
             </span>
           )}
-        </button>
+        </div>
 
         {hasMultipleImages && (
           <div className="post-rich-gallery-controls" aria-label="Switch image">

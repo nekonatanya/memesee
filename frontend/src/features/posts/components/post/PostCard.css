@@ -193,11 +193,44 @@
   box-shadow: 2px 2px 0 rgba(47, 36, 27, 0.1);
 }
 
+.post-media-item .responsive-image-shell {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.post-media-item .responsive-image-placeholder {
+  border-radius: inherit;
+}
+
 .post-media-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+.post-media-item.is-image-failed {
+  display: grid;
+  place-items: center;
+}
+
+.post-media-item.is-image-failed::before {
+  content: "图片加载失败";
+  padding: 10px;
+  color: rgba(47, 36, 27, 0.62);
+  font-size: 0.74rem;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.post-media-item.is-image-failed .responsive-image-shell {
+  display: none;
+}
+
+.post-media-item.is-image-failed .post-media-image {
+  display: none;
 }
 
 .post-media-status {

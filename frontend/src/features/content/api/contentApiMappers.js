@@ -1,9 +1,8 @@
 import {
-  buildPostMediaCacheVersionSeed,
   buildPreview,
-  extractImageUrls,
-  withMediaCacheVersion,
-} from "../../../shared/state/appHelpers";
+  extractMarkdownMediaAssetIds,
+} from "../../../shared/media/markdownContent";
+import { normalizePostModeValue } from "../../posts/state/mainPostModel";
 import {
   buildResponsiveImageSources,
   FEED_IMAGE_SIZES,
@@ -39,6 +38,7 @@ export function normalizeMediaAsset(apiBase, asset) {
     .filter((variant) => variant.kind || variant.url);
   return {
     id: assetId,
+    publicId: String(safeAsset.publicId || ""),
     kind: String(safeAsset.kind || "IMAGE"),
     url: normalizeAssetUrl(apiBase, rawUrl),
     thumbUrl: normalizeAssetUrl(apiBase, rawThumbUrl),
@@ -51,6 +51,8 @@ export function normalizeMediaAsset(apiBase, asset) {
     sizeBytes: Number(safeAsset.sizeBytes || 0),
     width: Number(safeAsset.width || 0),
     height: Number(safeAsset.height || 0),
+    blurDataUrl: String(safeAsset.blurDataUrl || ""),
+    placeholderUrl: String(safeAsset.placeholderUrl || safeAsset.blurDataUrl || ""),
     processingStatus: String(safeAsset.processingStatus || "READY"),
     variants,
   };
@@ -78,6 +80,11 @@ export function mapMainPost(apiBase, payload, { detailed = false } = {}) {
   const content = detailed
     ? String(safePost.content || "")
     : String(safePost.contentPreview || safePost.content || "");
+  const explicitPostMode = normalizePostModeValue(safePost.postMode);
+  const derivedPostMode = mediaAssets.length > 0 && extractMarkdownMediaAssetIds(content).length === 0
+    ? "rich"
+    : "long";
+  const postMode = safePost.postMode ? explicitPostMode : derivedPostMode;
   const previewImageUrls = Array.isArray(safePost.previewImageUrls)
     ? safePost.previewImageUrls
       .map((url) => normalizeAssetUrl(apiBase, url || ""))
@@ -90,7 +97,7 @@ export function mapMainPost(apiBase, payload, { detailed = false } = {}) {
     title: String(safePost.title || ""),
     content,
     preview: detailed ? undefined : buildPreview(content),
-    postMode: mediaAssets.length > 0 ? "rich" : "long",
+    postMode,
     mediaUrls: mediaAssets.map((asset) => asset.displayUrl || asset.mediumUrl || asset.url).filter(Boolean),
     mediaOriginalUrls: mediaAssets
       .map((asset) => asset.originalUrl || asset.displayUrl || asset.url)
@@ -117,14 +124,9 @@ export function mapMainPost(apiBase, payload, { detailed = false } = {}) {
     hotScore: Number.isFinite(backendHotScore) ? backendHotScore : 0,
     contentLoaded: detailed,
   };
-  const mediaVersionSeed = buildPostMediaCacheVersionSeed(mainPost);
   mainPost.previewImages = mediaAssets.length > 0
     ? mediaAssets.map((asset) => asset.thumbUrl || asset.displayUrl || asset.url).filter(Boolean).slice(0, 3)
-    : (previewImageUrls.length > 0
-        ? previewImageUrls
-        : extractImageUrls(content, apiBase))
-      .map((url) => withMediaCacheVersion(url, mediaVersionSeed))
-      .slice(0, 3);
+    : previewImageUrls.slice(0, 3);
   if (!Number.isFinite(backendHotScore)) {
     mainPost.hotScore = calculateHeatScore(mainPost);
   }

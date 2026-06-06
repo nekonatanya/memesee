@@ -29,6 +29,9 @@ public class MainPostFeedItem {
     @Column(nullable = false, length = 220)
     private String contentPreview;
 
+    @Column(nullable = false, length = 16)
+    private String postMode;
+
     @Column(nullable = false, length = 80)
     private String authorUsername;
 
@@ -78,6 +81,7 @@ public class MainPostFeedItem {
             String communityName,
             String title,
             String contentPreview,
+            String postMode,
             String authorUsername,
             String tagsJson,
             String mediaAssetsJson,
@@ -98,6 +102,7 @@ public class MainPostFeedItem {
         this.communityName = communityName;
         this.title = title;
         this.contentPreview = contentPreview;
+        this.postMode = postMode;
         this.authorUsername = authorUsername;
         this.tagsJson = tagsJson;
         this.mediaAssetsJson = mediaAssetsJson;
@@ -131,6 +136,10 @@ public class MainPostFeedItem {
 
     public String getContentPreview() {
         return contentPreview;
+    }
+
+    public String getPostMode() {
+        return postMode;
     }
 
     public String getAuthorUsername() {

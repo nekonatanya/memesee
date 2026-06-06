@@ -12,6 +12,7 @@ public record MainPostReadModel(
         String title,
         String content,
         String contentPreview,
+        String postMode,
         String authorUsername,
         Instant createdAt,
         Instant updatedAt,

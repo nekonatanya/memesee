@@ -1,5 +1,6 @@
 package com.memesee.content.mainpost.application;
 
+import com.memesee.content.common.application.ContentCacheInvalidationCoordinator;
 import com.memesee.content.feed.infrastructure.MainPostFeedItemRepository;
 import com.memesee.content.mainpost.infrastructure.MainPostRepository;
 import java.util.Map;
@@ -20,17 +21,20 @@ public class MainPostViewCountBuffer {
     private final StringRedisTemplate redisTemplate;
     private final MainPostRepository mainPostRepository;
     private final MainPostFeedItemRepository mainPostFeedItemRepository;
+    private final ContentCacheInvalidationCoordinator cacheInvalidationCoordinator;
     private final TransactionTemplate transactionTemplate;
 
     public MainPostViewCountBuffer(
             StringRedisTemplate redisTemplate,
             MainPostRepository mainPostRepository,
             MainPostFeedItemRepository mainPostFeedItemRepository,
+            ContentCacheInvalidationCoordinator cacheInvalidationCoordinator,
             PlatformTransactionManager transactionManager
     ) {
         this.redisTemplate = redisTemplate;
         this.mainPostRepository = mainPostRepository;
         this.mainPostFeedItemRepository = mainPostFeedItemRepository;
+        this.cacheInvalidationCoordinator = cacheInvalidationCoordinator;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
@@ -57,25 +61,33 @@ public class MainPostViewCountBuffer {
         if (entries == null || entries.isEmpty()) {
             return;
         }
-        entries.forEach((rawMainPostId, rawDelta) -> flushOne(rawMainPostId, rawDelta));
+        boolean flushedAny = false;
+        for (Map.Entry<Object, Object> entry : entries.entrySet()) {
+            flushedAny = flushOne(entry.getKey(), entry.getValue()) || flushedAny;
+        }
+        if (flushedAny) {
+            evictFeedPageCacheAfterViewFlush();
+        }
     }
 
-    private void flushOne(Object rawMainPostId, Object rawDelta) {
+    private boolean flushOne(Object rawMainPostId, Object rawDelta) {
         Long mainPostId = parseLong(rawMainPostId);
         Long parsedDelta = parseLong(rawDelta);
         long delta = parsedDelta == null ? 0L : Math.max(0L, parsedDelta);
         if (mainPostId == null || mainPostId <= 0L || delta <= 0L) {
-            return;
+            return false;
         }
         try {
-            transactionTemplate.executeWithoutResult(status -> {
-                mainPostRepository.incrementViewStats(mainPostId, delta);
-                mainPostFeedItemRepository.incrementViewStats(mainPostId, delta);
+            Boolean updated = transactionTemplate.execute(status -> {
+                int mainPostUpdates = mainPostRepository.incrementViewStats(mainPostId, delta);
+                int feedItemUpdates = mainPostFeedItemRepository.incrementViewStats(mainPostId, delta);
+                return mainPostUpdates > 0 || feedItemUpdates > 0;
             });
             Long remaining = redisTemplate.opsForHash().increment(VIEW_DELTA_KEY, String.valueOf(mainPostId), -delta);
             if (remaining != null && remaining <= 0L) {
                 redisTemplate.opsForHash().delete(VIEW_DELTA_KEY, String.valueOf(mainPostId));
             }
+            return Boolean.TRUE.equals(updated);
         } catch (RuntimeException error) {
             log.warn(
                     "main_post_view_count_buffer_flush_failed mainPostId={} delta={}",
@@ -83,6 +95,15 @@ public class MainPostViewCountBuffer {
                     delta,
                     error
             );
+            return false;
+        }
+    }
+
+    private void evictFeedPageCacheAfterViewFlush() {
+        try {
+            cacheInvalidationCoordinator.onMainPostViewStatsFlushed();
+        } catch (RuntimeException error) {
+            log.warn("main_post_cache_invalidation_after_view_flush_failed", error);
         }
     }
 

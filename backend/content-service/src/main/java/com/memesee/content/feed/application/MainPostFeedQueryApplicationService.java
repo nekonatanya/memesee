@@ -363,6 +363,7 @@ public class MainPostFeedQueryApplicationService {
                 row.getCommunityName(),
                 row.getTitle(),
                 row.getContentPreview(),
+                row.getPostMode(),
                 row.getAuthorUsername(),
                 toInstant(row.getCreatedAt()),
                 toInstant(row.getUpdatedAt()),

@@ -122,11 +122,15 @@ public class JpaMediaAttachmentProjectionPort implements MediaAttachmentProjecti
     private MediaAttachmentProjection toProjection(MediaAsset asset) {
         return new MediaAttachmentProjection(
                 asset.getId(),
+                asset.getPublicId(),
                 asset.getKind().name(),
+                asset.getBucketName(),
+                asset.getObjectKey(),
                 asset.getContentType(),
                 asset.getOriginalFilename(),
                 asset.getSizeBytes(),
-                asset.getProcessingStatus().name()
+                asset.getProcessingStatus().name(),
+                asset.getBlurDataUrl()
         );
     }
 

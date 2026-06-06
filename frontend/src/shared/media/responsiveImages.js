@@ -30,9 +30,36 @@ function variantUrl(asset, kind) {
   return normalizeUrl(findVariant(asset, kind)?.url);
 }
 
+function assetDimension(asset, key) {
+  const value = Number(asset?.[key] || 0);
+  return Number.isFinite(value) && value > 0 ? value : 0;
+}
+
 function variantWidth(asset, kind) {
+  const explicitWidth = Number(asset?.[kind + "Width"] || 0);
+  if (Number.isFinite(explicitWidth) && explicitWidth > 0) {
+    return explicitWidth;
+  }
   const width = Number(findVariant(asset, kind)?.width || 0);
   return Number.isFinite(width) && width > 0 ? width : VARIANT_WIDTHS[kind];
+}
+
+function variantHeight(asset, kind) {
+  const directHeight = Number(asset?.[kind + "Height"] || 0);
+  if (Number.isFinite(directHeight) && directHeight > 0) {
+    return directHeight;
+  }
+  const explicitHeight = Number(findVariant(asset, kind)?.height || 0);
+  if (Number.isFinite(explicitHeight) && explicitHeight > 0) {
+    return explicitHeight;
+  }
+  const originalWidth = assetDimension(asset, "width");
+  const originalHeight = assetDimension(asset, "height");
+  const width = variantWidth(asset, kind);
+  if (originalWidth > 0 && originalHeight > 0 && width > 0) {
+    return Math.max(1, Math.round((width * originalHeight) / originalWidth));
+  }
+  return 0;
 }
 
 function uniqueCandidates(candidates) {
@@ -55,16 +82,25 @@ export function buildResponsiveImageSource(asset, options = {}) {
       sizes: options.sizes || "",
       originalUrl: src,
       displayUrl: src,
+      width: 0,
+      height: 0,
+      aspectRatio: 0,
+      blurDataUrl: "",
+      placeholderUrl: "",
       processingStatus: "READY",
     };
   }
 
   const safeAsset = asset && typeof asset === "object" ? asset : {};
-  const candidates = uniqueCandidates(["thumb", "small", "medium", "display"]
+  const candidateKinds = Array.isArray(options.variantKinds)
+    ? options.variantKinds
+    : (options.prefer === "feed" ? ["thumb", "small"] : ["thumb", "small", "medium", "display"]);
+  const candidates = uniqueCandidates(candidateKinds
     .map((kind) => ({
       kind,
       url: variantUrl(safeAsset, kind),
       width: variantWidth(safeAsset, kind),
+      height: variantHeight(safeAsset, kind),
     }))
     .filter((candidate) => candidate.url));
 
@@ -77,10 +113,17 @@ export function buildResponsiveImageSource(asset, options = {}) {
     ? variantUrl(safeAsset, "thumb") || variantUrl(safeAsset, "small") || displayUrl
     : variantUrl(safeAsset, "medium") || displayUrl;
   const src = normalizeUrl(options.src || preferredSrc || displayUrl);
-  const srcSet = candidates
-    .sort((a, b) => a.width - b.width)
-    .map((candidate) => `${candidate.url} ${candidate.width}w`)
+  const sortedCandidates = candidates.sort((a, b) => a.width - b.width);
+  const srcSet = sortedCandidates
+    .map((candidate) => candidate.url + " " + candidate.width + "w")
     .join(", ");
+  const srcCandidate = sortedCandidates.find((candidate) => candidate.url === src)
+    || sortedCandidates.find((candidate) => candidate.url === displayUrl)
+    || sortedCandidates[sortedCandidates.length - 1]
+    || null;
+  const width = srcCandidate?.width || assetDimension(safeAsset, "width");
+  const height = srcCandidate?.height || assetDimension(safeAsset, "height");
+  const aspectRatio = width > 0 && height > 0 ? width / height : 0;
 
   return {
     src,
@@ -88,11 +131,20 @@ export function buildResponsiveImageSource(asset, options = {}) {
     sizes: options.sizes || "",
     originalUrl: normalizeUrl(safeAsset.originalUrl) || variantUrl(safeAsset, "original"),
     displayUrl,
+    width,
+    height,
+    aspectRatio,
     thumbUrl: variantUrl(safeAsset, "thumb"),
     smallUrl: variantUrl(safeAsset, "small"),
     mediumUrl: variantUrl(safeAsset, "medium"),
+    blurDataUrl: normalizeUrl(safeAsset.blurDataUrl),
+    placeholderUrl: normalizeUrl(safeAsset.placeholderUrl || safeAsset.blurDataUrl),
     processingStatus: String(safeAsset.processingStatus || "READY"),
   };
+}
+
+export function responsiveImageSourceUrl(source) {
+  return source?.src || source?.displayUrl || "";
 }
 
 export function buildResponsiveImageSources(assets, options = {}) {

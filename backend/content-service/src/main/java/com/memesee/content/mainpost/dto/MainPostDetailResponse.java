@@ -1,6 +1,5 @@
 package com.memesee.content.mainpost.dto;
 
-import com.memesee.content.media.dto.MediaAssetResponse;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -11,6 +10,7 @@ public record MainPostDetailResponse(
         String communityName,
         String title,
         String content,
+        String postMode,
         String authorUsername,
         Instant createdAt,
         Instant updatedAt,
@@ -22,7 +22,7 @@ public record MainPostDetailResponse(
         long favoriteCount,
         boolean likedByMe,
         boolean favoritedByMe,
-        List<MediaAssetResponse> mediaAssets,
+        List<MainPostDetailMediaAssetResponse> mediaAssets,
         List<String> tags
 ) {
 }

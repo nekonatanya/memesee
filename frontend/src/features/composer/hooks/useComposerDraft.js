@@ -6,9 +6,11 @@ import {
 import {
   navigateToCompose,
   navigateToHome,
+} from "../../../shared/state/appHelpers";
+import {
   normalizePostModeValue,
   normalizePostPayload,
-} from "../../../shared/state/appHelpers";
+} from "../../posts/state/mainPostModel";
 import { buildSavedMainPostMutationStrategy } from "../../posts/state/mainPostMutationStrategyHelpers";
 import {
   buildComposerSubmitPayload,
@@ -275,6 +277,7 @@ export function useComposerDraft({
       mainPostId,
       title: payload.title,
       content: payload.content,
+      postMode: payload.postMode,
       mediaAssetIds: payload.mediaAssetIds,
       tags: payload.tags,
     });
@@ -340,6 +343,7 @@ export function useComposerDraft({
           communitySlug: payload.communitySlug,
           title: payload.title,
           content: payload.content,
+          postMode: payload.postMode,
           mediaAssetIds: payload.mediaAssetIds,
           tags: payload.tags,
         });
@@ -489,6 +493,7 @@ export function useComposerDraft({
     composerCommunitySlug,
     composerMode,
     composerMediaUrls: mediaDraft.composerMediaUrls,
+    composerMediaAssets: mediaDraft.composerMediaAssets,
     editingMainPostId,
     title,
     content,

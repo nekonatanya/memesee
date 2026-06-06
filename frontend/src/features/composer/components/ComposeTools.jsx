@@ -63,7 +63,7 @@ const MARKDOWN_GUIDE_ITEMS = [
   },
   {
     label: "图片",
-    syntax: "![图片说明](图片地址)",
+    syntax: "![图片说明](media:图片ID)",
     effect: (
       <span className="markdown-guide-image-frame">
         <img src={GUIDE_IMAGE_SRC} alt="图片说明" />
@@ -72,7 +72,7 @@ const MARKDOWN_GUIDE_ITEMS = [
   },
   {
     label: "图片大小",
-    syntax: "![图片说明|300](图片地址)\n![图片说明|300x300](图片地址)\n![图片说明|width=60%](图片地址)",
+    syntax: "![图片说明|300](media:图片ID)\n![图片说明|300x300](media:图片ID)\n![图片说明|width=60%](media:图片ID)",
     effect: (
       <div className="markdown-guide-sized-images">
         <span className="markdown-guide-image-frame small">
@@ -162,9 +162,9 @@ export default function ComposeTools({
   closeComposerTagEditor,
 }) {
   const isPreviewing = viewMode === "preview";
-  const guideItems = composerMode === "rich"
-    ? MARKDOWN_GUIDE_ITEMS.filter((item) => item.label !== "图片" && item.label !== "图片大小")
-    : MARKDOWN_GUIDE_ITEMS;
+  const guideItems = composerMode === "long"
+    ? MARKDOWN_GUIDE_ITEMS
+    : MARKDOWN_GUIDE_ITEMS.filter((item) => item.label !== "图片" && item.label !== "图片大小");
 
   return (
     <>
@@ -213,7 +213,7 @@ export default function ComposeTools({
             <div className="compose-tool-group compose-tool-group-secondary">
               <label className={`compose-tool-btn compose-upload-btn file-btn ${uploadingAssets || !composerCommunitySlug ? "disabled" : ""}`}>
                 <UiIcon name="grid" />
-                <span>{uploadingAssets ? "上传中..." : "上传图片"}</span>
+                <span>{uploadingAssets ? "正在上传..." : "上传图片"}</span>
                 <input type="file" accept="image/*" multiple onChange={onComposerAssetPicked} disabled={uploadingAssets || !composerCommunitySlug} />
               </label>
 
@@ -244,8 +244,8 @@ export default function ComposeTools({
             <button type="submit" className="neo-btn composer-submit compose-submit-footer" disabled={publishing || !composerCommunitySlug}>
               {publishing
                 ? editingPostId
-                  ? "保存中..."
-                  : "发布中..."
+                  ? "正在保存..."
+                  : "正在发布..."
                 : editingPostId
                   ? "保存修改"
                   : "确认发布"}

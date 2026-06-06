@@ -1,7 +1,11 @@
 import {
+  extractMarkdownMediaAssetIds,
+  removeExternalMarkdownImages,
+  removeMarkdownImages,
+} from "../../../shared/media/markdownContent";
+import {
   normalizeTagItems,
   parseTagInput,
-  removeMarkdownImages,
 } from "../../../shared/state/appHelpers";
 import { shouldReloadFeedAfterMainPostUpsert } from "../../feed/state/feedQueryStateHelpers";
 
@@ -43,18 +47,52 @@ export function buildComposerSubmitPayload({
   composerMediaAssets,
   tags,
 }) {
+  const baseMediaAssetIds = (Array.isArray(composerMediaAssets) ? composerMediaAssets : [])
+    .map((asset) => Number(asset?.id || 0))
+    .filter((assetId) => assetId > 0);
+  const markdownMediaAssetIds = composerMode === "long"
+    ? extractMarkdownMediaAssetIds(content)
+    : [];
+  const mediaAssetIds = Array.from(new Set([
+    ...baseMediaAssetIds,
+    ...markdownMediaAssetIds,
+  ]));
+
   return {
     communitySlug,
     title,
-    content: composerMode === "rich" ? removeMarkdownImages(content) : content,
-    mediaAssetIds:
-      composerMode === "rich"
-        ? composerMediaAssets
-            .map((asset) => Number(asset?.id || 0))
-            .filter((assetId) => assetId > 0)
-        : [],
+    content: composerMode === "long"
+      ? removeExternalMarkdownImages(content)
+      : removeMarkdownImages(content),
+    postMode: composerMode === "rich" ? "rich" : "long",
+    mediaAssetIds,
     tags,
   };
+}
+
+
+export function buildComposerMarkdownImage(asset) {
+  const assetId = Number(asset?.id || 0);
+  const mediaRef = String(asset?.publicId || "").trim() || String(assetId || "");
+  if (!mediaRef || assetId <= 0) {
+    return "";
+  }
+  const rawName = String(asset?.originalFilename || "图片")
+    .replace(/[\[\]\n\r|]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim() || "图片";
+  return `![${rawName}](media:${mediaRef})`;
+}
+
+export function appendComposerMarkdownImages(content, uploadedAssets) {
+  const blocks = (Array.isArray(uploadedAssets) ? uploadedAssets : [])
+    .map(buildComposerMarkdownImage)
+    .filter(Boolean);
+  if (blocks.length === 0) {
+    return content || "";
+  }
+  const base = String(content || "").trimEnd();
+  return `${base}${base ? "\n" : ""}${blocks.join("\n")}\n`;
 }
 
 export function shouldRefreshComposerFeed({
@@ -156,11 +194,6 @@ export function mergeComposerMediaUrls(existingUrls, uploadedAssets) {
     }
   }
   return merged.slice(0, 20);
-}
-
-export function buildComposerMarkdownImage(filename, url) {
-  const safeName = String(filename || "").replace(/[)\]]/g, "");
-  return `![${safeName}](${url})`;
 }
 
 export function buildComposerUploadMessage({ imageCount, skippedCount }) {

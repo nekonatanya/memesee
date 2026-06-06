@@ -7,6 +7,7 @@ export default function PostCard({
   formatTime,
   clampText,
   formatHeatScore,
+  prioritizePreviewImages = false,
   children,
 }) {
   const activityTimeValue = post.latestActivityAt || post.createdAt;
@@ -45,7 +46,7 @@ export default function PostCard({
       <p className="post-content-preview">
         {clampText(post.preview || "", 60)}
       </p>
-      <PostMediaGrid post={post} />
+      <PostMediaGrid post={post} prioritizeImages={prioritizePreviewImages} />
       {children}
       <div className="post-foot">
         <div className="post-foot-left">

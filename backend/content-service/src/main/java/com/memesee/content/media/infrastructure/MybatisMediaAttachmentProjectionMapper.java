@@ -17,11 +17,15 @@ public interface MybatisMediaAttachmentProjectionMapper {
             SELECT
                 link.main_post_id AS owner_id,
                 asset.id AS asset_id,
+                asset.public_id AS public_id,
                 asset.kind AS kind,
+                asset.bucket_name AS bucket_name,
+                asset.object_key AS object_key,
                 asset.content_type AS content_type,
                 asset.original_filename AS original_filename,
                 asset.size_bytes AS size_bytes,
-                asset.processing_status AS processing_status
+                asset.processing_status AS processing_status,
+                asset.blur_data_url AS blur_data_url
             FROM main_post_media_links link
             JOIN media_assets asset
               ON asset.id = link.media_asset_id
@@ -36,11 +40,15 @@ public interface MybatisMediaAttachmentProjectionMapper {
     @Results(id = "mediaAttachmentProjectionRow", value = {
             @Result(property = "ownerId", column = "owner_id"),
             @Result(property = "assetId", column = "asset_id"),
+            @Result(property = "publicId", column = "public_id"),
             @Result(property = "kind", column = "kind"),
+            @Result(property = "bucketName", column = "bucket_name"),
+            @Result(property = "objectKey", column = "object_key"),
             @Result(property = "contentType", column = "content_type"),
             @Result(property = "originalFilename", column = "original_filename"),
             @Result(property = "sizeBytes", column = "size_bytes"),
-            @Result(property = "processingStatus", column = "processing_status")
+            @Result(property = "processingStatus", column = "processing_status"),
+            @Result(property = "blurDataUrl", column = "blur_data_url")
     })
     List<MybatisMediaAttachmentProjectionRow> selectMainPostMedia(@Param("mainPostIds") Collection<Long> mainPostIds);
 
@@ -49,11 +57,15 @@ public interface MybatisMediaAttachmentProjectionMapper {
             SELECT
                 link.sub_post_id AS owner_id,
                 asset.id AS asset_id,
+                asset.public_id AS public_id,
                 asset.kind AS kind,
+                asset.bucket_name AS bucket_name,
+                asset.object_key AS object_key,
                 asset.content_type AS content_type,
                 asset.original_filename AS original_filename,
                 asset.size_bytes AS size_bytes,
-                asset.processing_status AS processing_status
+                asset.processing_status AS processing_status,
+                asset.blur_data_url AS blur_data_url
             FROM sub_post_media_links link
             JOIN media_assets asset
               ON asset.id = link.media_asset_id

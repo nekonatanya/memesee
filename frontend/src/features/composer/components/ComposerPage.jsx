@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { StatusCard } from "../../../shared/components/PageShell";
 import ComposeContent from "./ComposeContent";
 import ComposeHeader from "./ComposeHeader";
 import ComposeMedia from "./ComposeMedia";
@@ -15,6 +16,7 @@ export default function ComposerPage({
   composerMode,
   composerMediaUrls,
   composerMediaIndex,
+  composerMediaAssets,
   content,
   composerCommunityName,
   orderedCommunities,
@@ -54,13 +56,11 @@ export default function ComposerPage({
   return (
     <section className="feed-grid">
       {!isLoggedIn && (
-        <article className="feed-status-card feed-status-card-empty">
-          <div className="feed-status-mainline">
-            <span className="feed-status-mark" aria-hidden="true" />
-            <strong>请先登录后发布主帖</strong>
-          </div>
-          <span className="feed-status-subtext">登录后就可以选择分区、上传图片并发布内容。</span>
-        </article>
+        <StatusCard
+          title="请先登录后发布主帖"
+          description="登录后就可以选择分区、上传图片并发布内容。"
+          tone="empty"
+        />
       )}
       {isLoggedIn && (
         <article className="composer-page composer-inline-page composer-paper">
@@ -112,6 +112,7 @@ export default function ComposerPage({
               handleComposerContentChange={handleComposerContentChange}
               composerContentRef={composerContentRef}
               closeComposerTagEditor={closeComposerTagEditor}
+              composerMediaAssets={composerMediaAssets}
               openImageViewer={openImageViewer}
             />
 

@@ -32,6 +32,10 @@ public class ContentCacheInvalidationCoordinator {
         runAfterCommit(mainPostFeedPageCache::evictAllFeedPages);
     }
 
+    public void onMainPostViewStatsFlushed() {
+        runAfterCommit(mainPostFeedPageCache::evictAllFeedPages);
+    }
+
     public void onSubPostChanged(Long mainPostId) {
         requireMainPostId(mainPostId);
         onMainPostChanged();

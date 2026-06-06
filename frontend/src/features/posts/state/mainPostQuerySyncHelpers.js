@@ -76,6 +76,7 @@ export function syncMainPostEngagementIntoFeed(posts, mainPostId, engagementStat
     {
       sortMode: feedQueryState?.feedSortMode,
       recalculateHotScore: !Number.isFinite(Number(engagementState?.hotScore)),
+      allowMetricRegression: true,
     },
   );
 }
@@ -87,6 +88,7 @@ export function syncMainPostEngagementIntoDetail(postDetail, mainPostId, engagem
     buildMainPostEngagementPatch(engagementState),
     {
       recalculateHotScore: !Number.isFinite(Number(engagementState?.hotScore)),
+      allowMetricRegression: true,
     },
   );
 }

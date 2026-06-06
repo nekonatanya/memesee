@@ -38,6 +38,7 @@ public class MainPostFeedItemAssembler {
                 community.getName(),
                 mainPost.getTitle(),
                 mainPostReadModelAssembler.buildContentPreview(mainPost.getContent()),
+                mainPost.getPostMode(),
                 mainPost.getAuthorUsername(),
                 writeJson(mainPost.getTags()),
                 writeJson(visibleMediaAssets),

@@ -99,13 +99,14 @@ export async function listMyMainPosts(client, { token, limit = 120 }) {
 
 /**
  * @param {{ post: Function, defaults?: { baseURL?: string } }} client
- * @param {{ token?: string, communitySlug?: string, title?: string, content?: string, mediaAssetIds?: number[], tags?: string[] }} options
+ * @param {{ token?: string, communitySlug?: string, title?: string, content?: string, postMode?: string, mediaAssetIds?: number[], tags?: string[] }} options
  */
 export async function createMainPost(client, {
   token,
   communitySlug,
   title,
   content,
+  postMode,
   mediaAssetIds,
   tags,
 }) {
@@ -114,6 +115,7 @@ export async function createMainPost(client, {
     communitySlug,
     title,
     content,
+    postMode: postMode === "rich" ? "rich" : "long",
     mediaAssetIds: Array.isArray(mediaAssetIds) ? mediaAssetIds : [],
     tags: Array.isArray(tags) ? tags : [],
   };
@@ -130,13 +132,14 @@ export async function createMainPost(client, {
 
 /**
  * @param {{ put: Function, defaults?: { baseURL?: string } }} client
- * @param {{ token?: string, mainPostId: number, title?: string, content?: string, mediaAssetIds?: number[], tags?: string[] }} options
+ * @param {{ token?: string, mainPostId: number, title?: string, content?: string, postMode?: string, mediaAssetIds?: number[], tags?: string[] }} options
  */
 export async function updateMainPost(client, {
   token,
   mainPostId,
   title,
   content,
+  postMode,
   mediaAssetIds,
   tags,
 }) {
@@ -144,6 +147,7 @@ export async function updateMainPost(client, {
   const payload = {
     title,
     content,
+    postMode: postMode === "rich" ? "rich" : "long",
     mediaAssetIds: Array.isArray(mediaAssetIds) ? mediaAssetIds : [],
     tags: Array.isArray(tags) ? tags : [],
   };

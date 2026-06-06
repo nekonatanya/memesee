@@ -3,14 +3,10 @@ package com.memesee.content.media.infrastructure;
 import com.memesee.platform.error.ApiErrorCode;
 import com.memesee.platform.error.ApiException;
 import io.minio.BucketExistsArgs;
-import io.minio.GetObjectArgs;
-import io.minio.GetObjectResponse;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
 import io.minio.PutObjectArgs;
-import io.minio.errors.ErrorResponseException;
 import java.io.InputStream;
-import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
@@ -18,8 +14,6 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.InputStreamResource;
-import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
@@ -59,41 +53,6 @@ public class MinioMediaStorageService {
         String normalizedContentType = normalizeContentType(contentType);
         String extension = resolveExtension(originalFilename, normalizedContentType);
         return storeBytes(bytes, originalFilename, normalizedContentType, extension);
-    }
-
-    public Resource load(String bucketName, String objectKey) {
-        try {
-            GetObjectResponse response = minioClient.getObject(GetObjectArgs.builder()
-                    .bucket(resolveBucketName(bucketName))
-                    .object(objectKey)
-                    .build());
-            return new InputStreamResource(response);
-        } catch (ErrorResponseException ex) {
-            if ("NoSuchKey".equals(ex.errorResponse().code()) || "NoSuchBucket".equals(ex.errorResponse().code())) {
-                throw new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, "媒体资源不存在。");
-            }
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
-        } catch (Exception ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
-        }
-    }
-
-    public byte[] loadBytes(String bucketName, String objectKey) {
-        try (GetObjectResponse response = minioClient.getObject(GetObjectArgs.builder()
-                .bucket(resolveBucketName(bucketName))
-                .object(objectKey)
-                .build())) {
-            return response.readAllBytes();
-        } catch (ErrorResponseException ex) {
-            if ("NoSuchKey".equals(ex.errorResponse().code()) || "NoSuchBucket".equals(ex.errorResponse().code())) {
-                throw new ApiException(HttpStatus.NOT_FOUND, ApiErrorCode.RESOURCE_NOT_FOUND, "媒体资源不存在。");
-            }
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
-        } catch (IOException ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
-        } catch (Exception ex) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, ApiErrorCode.INTERNAL_ERROR, "媒体读取失败。", ex);
-        }
     }
 
     public String buildPublicUrl(String bucketName, String objectKey) {

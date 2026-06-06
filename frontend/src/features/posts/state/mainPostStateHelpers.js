@@ -3,7 +3,14 @@ import {
   resolveLatestActivityAt,
   resolveLatestActivityAtText,
   sortPostsByMode,
-} from "../../../shared/state/appHelpers";
+} from "./mainPostModel";
+
+const MONOTONIC_MAIN_POST_COUNT_FIELDS = [
+  "viewCount",
+  "subPostCount",
+  "likeCount",
+  "favoriteCount",
+];
 
 function resolvePatch(post, patchOrUpdater) {
   if (typeof patchOrUpdater === "function") {
@@ -13,12 +20,30 @@ function resolvePatch(post, patchOrUpdater) {
 }
 
 function hasMetricPatch(patch = {}) {
-  return (
-    Object.prototype.hasOwnProperty.call(patch, "viewCount") ||
-    Object.prototype.hasOwnProperty.call(patch, "subPostCount") ||
-    Object.prototype.hasOwnProperty.call(patch, "likeCount") ||
-    Object.prototype.hasOwnProperty.call(patch, "favoriteCount")
+  return MONOTONIC_MAIN_POST_COUNT_FIELDS.some((field) =>
+    Object.prototype.hasOwnProperty.call(patch, field),
   );
+}
+
+function mergeMainPostMetricState(post, patch, options = {}) {
+  const merged = { ...post, ...patch };
+
+  if (options.allowMetricRegression) {
+    return merged;
+  }
+
+  for (const field of MONOTONIC_MAIN_POST_COUNT_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(patch, field)) {
+      continue;
+    }
+    const currentValue = Number(post?.[field] || 0);
+    const incomingValue = Number(patch?.[field] || 0);
+    if (Number.isFinite(currentValue) && Number.isFinite(incomingValue)) {
+      merged[field] = Math.max(currentValue, incomingValue);
+    }
+  }
+
+  return merged;
 }
 
 export function mergeMainPostState(post, patchOrUpdater, options = {}) {
@@ -31,7 +56,7 @@ export function mergeMainPostState(post, patchOrUpdater, options = {}) {
     return post;
   }
 
-  const merged = { ...post, ...patch };
+  const merged = mergeMainPostMetricState(post, patch, options);
   const latestActivityAt = resolveLatestActivityAt(merged);
   const latestActivityAtText = resolveLatestActivityAtText(merged);
 
@@ -41,15 +66,56 @@ export function mergeMainPostState(post, patchOrUpdater, options = {}) {
   merged.latestSubPostAtText = latestActivityAtText;
 
   const explicitHotScore = Number(merged.hotScore ?? merged.heatScore);
-  if (Number.isFinite(explicitHotScore) && !options.recalculateHotScore) {
+  const shouldRecalculateHotScore =
+    options.recalculateHotScore ||
+    hasMetricPatch(patch) ||
+    MONOTONIC_MAIN_POST_COUNT_FIELDS.some((field) => merged[field] !== patch[field]);
+
+  if (Number.isFinite(explicitHotScore) && !shouldRecalculateHotScore) {
     merged.hotScore = explicitHotScore;
     return merged;
   }
 
-  if (options.recalculateHotScore || hasMetricPatch(patch)) {
+  if (shouldRecalculateHotScore) {
     merged.hotScore = calculateHeatScore(merged);
   }
 
+  return merged;
+}
+
+export function mergeMainPostFeedItem(existingPost, incomingPost, options = {}) {
+  if (!existingPost) {
+    return incomingPost;
+  }
+  if (!incomingPost) {
+    return existingPost;
+  }
+  return mergeMainPostState(existingPost, incomingPost, options);
+}
+
+export function mergeFeedSnapshotWithKnownState(existingPosts, incomingPosts, options = {}) {
+  const existingById = new Map(
+    (Array.isArray(existingPosts) ? existingPosts : [])
+      .filter((post) => post?.id)
+      .map((post) => [post.id, post]),
+  );
+
+  return (Array.isArray(incomingPosts) ? incomingPosts : [])
+    .map((post) => mergeMainPostFeedItem(existingById.get(post?.id), post, options));
+}
+
+export function mergePostPages(existingPosts, incomingPosts, options = {}) {
+  const merged = Array.isArray(existingPosts) ? [...existingPosts] : [];
+  const indexMap = new Map(merged.map((post, index) => [post.id, index]));
+  for (const post of Array.isArray(incomingPosts) ? incomingPosts : []) {
+    const existingIndex = indexMap.get(post.id);
+    if (existingIndex === undefined) {
+      indexMap.set(post.id, merged.length);
+      merged.push(post);
+      continue;
+    }
+    merged[existingIndex] = mergeMainPostFeedItem(merged[existingIndex], post, options);
+  }
   return merged;
 }
 
@@ -85,7 +151,8 @@ export function patchMainPostDetail(postDetail, mainPostId, patchOrUpdater, opti
 
 export function upsertMainPostInFeed(posts, nextPost, options = {}) {
   const currentPosts = Array.isArray(posts) ? posts : [];
-  const normalizedPost = mergeMainPostState(nextPost, {});
+  const existingPost = currentPosts.find((post) => post.id === nextPost?.id);
+  const normalizedPost = mergeMainPostFeedItem(existingPost, nextPost, options);
   const filteredPosts = currentPosts.filter((post) => post.id !== normalizedPost.id);
   const nextPosts = [normalizedPost, ...filteredPosts];
 

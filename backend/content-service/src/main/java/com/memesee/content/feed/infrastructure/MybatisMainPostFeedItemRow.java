@@ -10,6 +10,7 @@ public class MybatisMainPostFeedItemRow {
     private String communityName;
     private String title;
     private String contentPreview;
+    private String postMode;
     private String authorUsername;
     private String tagsJson;
     private String mediaAssetsJson;
@@ -61,6 +62,14 @@ public class MybatisMainPostFeedItemRow {
 
     public void setContentPreview(String contentPreview) {
         this.contentPreview = contentPreview;
+    }
+
+    public String getPostMode() {
+        return postMode;
+    }
+
+    public void setPostMode(String postMode) {
+        this.postMode = postMode;
     }
 
     public String getAuthorUsername() {

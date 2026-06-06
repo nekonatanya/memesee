@@ -194,6 +194,39 @@ services:
     expose:
       - "8083"
 
+  media-worker:
+    build:
+      context: ./media-worker
+      dockerfile: Dockerfile
+    container_name: memesee-media-worker
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      MEDIA_WORKER_RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER:-memesee}:${RABBITMQ_DEFAULT_PASS:?set RABBITMQ_DEFAULT_PASS in .env}@rabbitmq:5672
+      MEDIA_WORKER_QUEUE: ${CONTENT_MEDIA_PROCESSING_QUEUE:-memesee.media.variant-processing}
+      MEDIA_WORKER_CONCURRENCY: ${MEDIA_WORKER_CONCURRENCY:-2}
+      MEDIA_WORKER_DB_HOST: mysql
+      MEDIA_WORKER_DB_PORT: 3306
+      MEDIA_WORKER_DB_NAME: memesee_content
+      MEDIA_WORKER_DB_USERNAME: ${MYSQL_APP_USERNAME:-memesee_app}
+      MEDIA_WORKER_DB_PASSWORD: ${MYSQL_APP_PASSWORD:?set MYSQL_APP_PASSWORD in .env}
+      MEDIA_WORKER_MINIO_ENDPOINT: minio
+      MEDIA_WORKER_MINIO_PORT: 9000
+      MEDIA_WORKER_MINIO_USE_SSL: "false"
+      MEDIA_WORKER_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER in .env}
+      MEDIA_WORKER_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD in .env}
+      MEDIA_WORKER_MINIO_BUCKET: ${CONTENT_MEDIA_MINIO_BUCKET:-memesee-post-images}
+      MEDIA_WORKER_PUBLIC_BASE_URL: ${CONTENT_MEDIA_PUBLIC_BASE_URL:-https://memesee.world/media}
+      MEDIA_WORKER_REDIS_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD in .env}@redis:6379/0
+
   gateway-service:
     build:
       context: ./backend
